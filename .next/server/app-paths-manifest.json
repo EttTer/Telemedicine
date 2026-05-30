@@ -1,0 +1,13 @@
+{
+  "/(auth)/login/page": "app/(auth)/login/page.js",
+  "/page": "app/page.js",
+  "/api/consultations/route": "app/api/consultations/route.js",
+  "/api/consultations/[id]/route": "app/api/consultations/[id]/route.js",
+  "/(practice)/consultations/new/page": "app/(practice)/consultations/new/page.js",
+  "/(practice)/dashboard/page": "app/(practice)/dashboard/page.js",
+  "/(practice)/consultations/[id]/page": "app/(practice)/consultations/[id]/page.js",
+  "/consultation/[token]/instructions/page": "app/consultation/[token]/instructions/page.js",
+  "/consultation/[token]/page": "app/consultation/[token]/page.js",
+  "/consultation/[token]/checkin/page": "app/consultation/[token]/checkin/page.js",
+  "/consultation/[token]/waiting/page": "app/consultation/[token]/waiting/page.js"
+}

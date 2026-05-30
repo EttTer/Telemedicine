@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-neutral-50 text-neutral-900 antialiased selection:bg-primary-200 selection:text-primary-900;
+  }
+
+  /* Custom scrollbar for webkit */
+  ::-webkit-scrollbar {
+    @apply w-2 h-2;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-neutral-300 rounded-full hover:bg-neutral-400 transition-colors;
+  }
+}
+
+@layer components {
+  /* Common component classes can go here if needed, but we mostly use utility classes */
+  .btn {
+    @apply inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:pointer-events-none disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply bg-primary-500 text-white hover:bg-primary-600 shadow-sm;
+  }
+  .btn-secondary {
+    @apply bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50 hover:text-neutral-900;
+  }
+  .btn-accent {
+    @apply bg-accent-500 text-white hover:bg-accent-600 shadow-sm;
+  }
+  
+  .card {
+    @apply bg-white rounded-lg shadow-card border border-neutral-100 overflow-hidden;
+  }
+  
+  .input-field {
+    @apply flex h-10 w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-neutral-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+}
