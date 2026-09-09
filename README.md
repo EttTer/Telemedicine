@@ -17,7 +17,7 @@ A secure, browser-based telemedicine waiting-room platform for outpatient medica
 
 - **Frontend**: Next.js (App Router), React, Tailwind CSS
 - **Backend/Auth/Database**: Supabase (PostgreSQL)
-- **Video Provider**: Daily.co (Embedded API)
+- **Video Provider**: Whereby (Embedded API)
 
 ## Setup Instructions
 
