@@ -29,7 +29,7 @@ A secure, browser-based telemedicine waiting-room platform for outpatient medica
    - Run the SQL migrations in `supabase/migrations/` sequentially in the SQL Editor.
    - Configure Authentication providers (Email) if needed.
    - Update `.env.local` with your Supabase URL and keys.
-5. **Set up Video Provider (Daily.co)**:
+5. **Set up Video Provider**:
    - Create a Whereby account.
    - Generate an API key.
    - Update `.env.local` with your Whereby domain and API key.
