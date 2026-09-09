@@ -1,5 +1,14 @@
-node_modules
-.env
-dist
-build
-node_modules
+node_modules/
+
+# Local credentials; keep the example configuration in Git.
+.env*
+!.env.example
+
+# Generated output and caches
+.next/
+dist/
+build/
+*.tsbuildinfo
+
+# Local runtime logs
+*.log
