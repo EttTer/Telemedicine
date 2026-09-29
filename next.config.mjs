@@ -12,18 +12,18 @@ const nextConfig = {
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           {
             key: 'Permissions-Policy',
-            value: 'camera=(self), microphone=(self), geolocation=()',
+            value: 'camera=(self "https://*.whereby.com"), microphone=(self "https://*.whereby.com"), geolocation=()',
           },
           {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://b.daily.co",
+              "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://*.whereby.com",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: blob:",
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.daily.co wss://*.daily.co",
-              "frame-src https://*.daily.co",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.whereby.com wss://*.whereby.com",
+              "frame-src https://*.whereby.com",
               "media-src 'self' blob:",
             ].join('; '),
           },

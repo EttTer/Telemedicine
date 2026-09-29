@@ -1,26 +1,16 @@
-# Supabase Setup for Telemedicine App
+# Existing Supabase project: restoration
 
-This folder contains the database schema and Row Level Security (RLS) policies for the platform.
+Do not run the legacy migration files sequentially on the existing project.
+They contain incompatible users/staff schemas and a destructive DROP TABLE CASCADE.
+No database changes are part of this branch.
 
-## Setup Instructions
+1. Run `inspect_existing_schema.sql` in SQL Editor (read only, no patient rows).
+2. Review tables, foreign keys and RLS policies before preparing a forward migration.
+3. The application now expects `public.staff` linked to `auth.users`.
+4. Test any migration against a separate staging project first, with synthetic data.
+5. Before production migration, verify backup and restoration procedures.
 
-1. **Create a new Supabase project** at [supabase.com](https://supabase.com).
-2. **Run Migrations**:
-   Go to the SQL Editor in your Supabase dashboard and run the files in the following order:
-   - `001_initial_schema.sql` — Creates tables, enums, and foreign keys.
-   - `002_rls_policies.sql` — Enables RLS and sets basic policies.
-   - `003_seed_data.sql` — (Optional) Inserts mock data for testing.
-3. **Configure Authentication**:
-   - Go to Authentication -> Providers.
-   - Ensure Email provider is enabled.
-   - Optionally disable "Confirm email" for local testing.
-4. **Environment Variables**:
-   - Copy the Project URL and `anon` public key to your `.env.local` file:
-     ```
-     NEXT_PUBLIC_SUPABASE_URL=your-project-url
-     NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-     ```
-   - For backend admin tasks (like creating the Daily.co rooms or updating audit logs), add the `service_role` key:
-     ```
-     SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-     ```
+The staff self-referencing RLS policy in the legacy scripts still needs replacement.
+Dashboard queries use RLS and require the repaired policies; do not disable RLS as a workaround.
+
+Set Supabase keys and WHEREBY_API_KEY through the deployment environment, not Git or chat.

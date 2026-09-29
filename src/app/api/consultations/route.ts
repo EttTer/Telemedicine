@@ -1,46 +1,29 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { getStaffContext } from '@/lib/staff'
 import { logAuditEvent } from '@/lib/audit'
+import { z } from 'zod'
 import crypto from 'crypto'
 
-// Admin client uses service role key and bypasses RLS entirely.
-// Used ONLY to read the logged-in user's own profile row, which would
-// otherwise cause RLS self-reference recursion.
-const supabaseAdmin = createAdminClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+const consultationInput = z.object({
+  consultation_type: z.string().trim().min(1).max(200),
+  patient_first_name: z.string().trim().max(100).optional(),
+  patient_last_name: z.string().trim().max(100).optional(),
+  identity_verification_method: z.string().trim().min(1).max(200),
+  note_to_patient: z.string().trim().max(2000).optional(),
+}).strict()
 
 export async function POST(request: Request) {
   try {
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const context = await getStaffContext()
+    if (!context.staff) {
+      return NextResponse.json({ error: 'Přístup není povolen.' }, { status: context.status })
     }
-
-    // Fetch the user's practice_id using the admin client to avoid RLS recursion
-    const { data: userData, error: userError } = await supabaseAdmin
-      .from('staff')
-      .select('practice_id, role')
-      .eq('id', user.id)
-      .single()
-
-    if (userError) {
-      console.error('Error fetching user profile:', userError)
-    }
-
-    if (!userData) {
-      console.error('User profile not found for auth.uid:', user.id)
-      return NextResponse.json(
-        { error: 'Profil uživatele nebyl nalezen. Zkontrolujte, zda byl váš účet propojen s ordinací.' },
-        { status: 400 }
-      )
-    }
-
-    const body = await request.json()
+    const parsed = consultationInput.safeParse(await request.json().catch(() => null))
+    if (!parsed.success) return NextResponse.json({ error: 'Neplatné údaje konzultace.' }, { status: 400 })
+    const body = parsed.data
+    const userData = context.staff
+    const user = { id: userData.id }
+    const supabaseAdmin = context.admin
 
     // 1. Create the consultation record
     const { data: consultation, error: consultationError } = await supabaseAdmin
@@ -49,7 +32,7 @@ export async function POST(request: Request) {
         {
           practice_id: userData.practice_id,
           created_by: user.id,
-          doctor_id: user.id,
+          doctor_id: userData.role === 'doctor' ? user.id : null,
           scheduled_for: new Date().toISOString(),
           consultation_type: body.consultation_type || 'Obecná konzultace',
           patient_first_name: body.patient_first_name || null,
@@ -103,7 +86,7 @@ export async function POST(request: Request) {
     })
 
     // Return only what the client needs — the raw token is returned once and never stored in plaintext
-    return NextResponse.json({ id: consultation.id, token })
+    return NextResponse.json({ id: consultation.id, token }, { headers: { 'Cache-Control': 'no-store' } })
   } catch (error) {
     console.error('Consultation creation error:', error)
     return NextResponse.json({ error: 'Interní chyba serveru' }, { status: 500 })

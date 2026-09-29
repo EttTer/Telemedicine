@@ -1,3 +1,5 @@
+import 'server-only'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
@@ -37,15 +39,9 @@ export function createClient() {
 
 // For operations that require bypassing RLS or performing admin tasks
 export function createAdminClient() {
-  return createServerClient(
+  return createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      cookies: {
-        get() { return undefined },
-        set() {},
-        remove() {}
-      }
-    }
+    { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } }
   )
 }

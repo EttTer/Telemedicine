@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Stethoscope, CalendarPlus, LogOut, LayoutDashboard, Settings, Users } from 'lucide-react'
-import { createClient } from '@/lib/supabase/server'
+import { getStaffContext } from '@/lib/staff'
 import { Button } from '@/components/ui/Button'
 
 export default async function PracticeLayout({
@@ -9,22 +9,16 @@ export default async function PracticeLayout({
 }: {
   children: React.ReactNode
 }) {
-  const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    redirect('/login')
+  const context = await getStaffContext()
+  if (!context.staff) {
+    if (context.status === 401) redirect('/login')
+    return <main className="p-8">Účet nemá přiřazenou ordinaci. Kontaktujte správce.</main>
   }
-
-  // Fetch user role and practice info from our users table
-  const { data: userData } = await supabase
-    .from('users')
-    .select('role, first_name, last_name, practices(name)')
-    .eq('id', user.id)
-    .single()
-
-  const practiceName = userData?.practices?.[0]?.name || 'Ordinace'
-  const userName = userData ? `${userData.first_name} ${userData.last_name}` : user.email
+  const userData = context.staff
+  const { data: practice } = await context.admin.from('practices')
+    .select('name').eq('id', userData.practice_id).single()
+  const practiceName = practice?.name || 'Ordinace'
+  const userName = `${userData.first_name} ${userData.last_name}`
 
   return (
     <div className="min-h-screen bg-neutral-50 flex flex-col">
