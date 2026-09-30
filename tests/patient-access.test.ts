@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { createHash } from 'node:crypto'
 vi.mock('server-only', () => ({}))
+vi.mock('next/headers', () => ({ cookies: () => ({ get: () => undefined }) }))
 vi.mock('@/lib/supabase/server', () => ({ createAdminClient: vi.fn() }))
 import { createAdminClient } from '@/lib/supabase/server'
 import { getPatientConsultation } from '@/lib/patient-access'

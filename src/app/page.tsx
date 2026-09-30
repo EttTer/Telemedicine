@@ -16,7 +16,7 @@ export default function Home() {
         </h1>
         
         <p className="text-xl text-neutral-600 max-w-2xl mx-auto">
-          Moderní platforma pro online konzultace mezi lékařem a pacientem, plně v souladu s českou legislativou.
+          Testovací platforma pro online konzultace mezi lékařem a pacientem.
         </p>
 
         <div className="grid sm:grid-cols-3 gap-6 pt-8 max-w-4xl mx-auto text-left">
@@ -24,7 +24,7 @@ export default function Home() {
             <Shield className="h-8 w-8 text-primary-500 mb-4" />
             <h3 className="font-semibold text-lg mb-2">Šifrovaná komunikace</h3>
             <p className="text-sm text-neutral-600">
-              End-to-end zabezpečené videohovory bez nahrávání, pro maximální ochranu soukromí.
+              Videohovory prostřednictvím Whereby. Aplikace nepořizuje záznam hovoru.
             </p>
           </div>
           
@@ -40,7 +40,7 @@ export default function Home() {
             <Stethoscope className="h-8 w-8 text-primary-500 mb-4" />
             <h3 className="font-semibold text-lg mb-2">Řízené nahrávání souborů</h3>
             <p className="text-sm text-neutral-600">
-              Dokumenty lze nahrát pouze na výslovnou žádost ordinace.
+              Předávání dokumentů na žádost ordinace připravujeme.
             </p>
           </div>
         </div>

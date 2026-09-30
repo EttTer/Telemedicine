@@ -24,3 +24,21 @@ The existing `whereby_meetings` table contains `id`, `consultation_id` (unique),
 ## Local tests
 
 Run `npm ci`, then `npm run test:db`. `supabase/tests/restoration_fixture.sql` is a disposable synthetic fixture. Never execute the fixture on the hosted project. No real project keys or data are needed.
+
+## Consultation workflow — 30 September 2026
+
+Applied `20260930115642_consultation_workflow.sql` to the existing project. This adds
+`patient_sessions` and `video_room_claims`, both server-only with RLS and no browser grants.
+`tm_staff_action` and `tm_patient_action` are invoker RPC functions executable only by
+service_role. Consultation row locks serialize reissue/check-in/room admission. Creation
+of a consultation, invitation hash and audit event is atomic. Existing records were not rewritten.
+
+Test locally using `npm run test:workflow`; it creates synthetic data in disposable PGlite,
+not the hosted database. Applied migration version matches hosted migration history.
+Security advisor: five informational no-policy findings are intentional for server-only tables.
+Existing warning remains: compromised-password protection is disabled.
+Remediation: https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection
+
+Before live use, configure Whereby Embedded as described in the root README and test a full
+call on two devices, including denying media permissions and retrying failed termination.
+No real Whereby call has been verified by the automated tests.

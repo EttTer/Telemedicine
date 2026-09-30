@@ -18,7 +18,7 @@ function authorization() {
 }
 
 // Server-only adapter. Do not return hostRoomUrl to patients or place it in logs.
-// Room routes and lifecycle persistence will be connected in the next milestone.
+// Creation and deletion are coordinated by the consultation workflow routes.
 export async function createWherebyMeeting(endDate: Date) {
   if (!Number.isFinite(endDate.getTime()) || endDate.getTime() <= Date.now()) {
     throw new Error('Meeting endDate must be in the future')
@@ -48,5 +48,5 @@ export async function deleteWherebyMeeting(meetingId: string) {
     cache: 'no-store',
     signal: AbortSignal.timeout(15000),
   })
-  if (!response.ok) throw new Error(`Whereby meeting deletion failed (${response.status})`)
+  if (!response.ok && response.status !== 404) throw new Error(`Whereby meeting deletion failed (${response.status})`)
 }
