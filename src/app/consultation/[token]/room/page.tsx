@@ -10,15 +10,15 @@ export default function PatientVideoRoom({ params }: { params: { token: string }
   const [uploadEnabled, setUploadEnabled] = useState(false) // Driven by real-time status in reality
 
   const handleEndCall = () => {
-    // In reality, this leaves the Daily.co room and updates DB
+    // In reality, this leaves the Whereby room and updates DB
     router.push(`/consultation/${params.token}/ended`)
   }
 
   return (
     <div className="flex-1 flex flex-col -m-4 sm:-m-6 lg:-m-8">
       {/* 
-        This is a placeholder for the Daily.co embedded frame.
-        In production, we would use @daily-co/daily-js to embed the video call here.
+        This is a placeholder for the Whereby embedded frame.
+        In production, we would use Whereby Embedded to embed the video call here.
       */}
       <div className="flex-1 bg-neutral-900 flex items-center justify-center relative">
         <div className="text-center text-neutral-400">
@@ -26,7 +26,7 @@ export default function PatientVideoRoom({ params }: { params: { token: string }
           <p className="text-lg">Zabezpečený videohovor (MVP)</p>
           <div className="flex items-center justify-center mt-2 text-sm text-neutral-500">
             <ShieldCheck className="w-4 h-4 mr-1 text-success-500" />
-            End-to-end šifrováno, nenahrává se
+            Ukázková obrazovka – videohovor zatím není připojen
           </div>
         </div>
 

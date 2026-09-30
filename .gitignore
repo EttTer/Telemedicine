@@ -12,3 +12,6 @@ build/
 
 # Local runtime logs
 *.log
+
+# Supabase CLI cache
+supabase/.temp/

@@ -1,40 +1,36 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl
-
-  // The actual authentication logic using @supabase/ssr will be implemented here later.
-  // For now, this is a placeholder structure for the route protection.
-
-  // 1. Protect Practice / Admin routes
-  if (pathname.startsWith('/dashboard') || pathname.startsWith('/consultations') || pathname.startsWith('/admin')) {
-    // Check Supabase session
-    // if (!session) return NextResponse.redirect(new URL('/login', request.url))
+  let response = NextResponse.next({ request })
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => request.cookies.getAll(),
+        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          response = NextResponse.next({ request })
+          cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options))
+        },
+      },
+    }
+  )
+  const { data: { user } } = await supabase.auth.getUser()
+  const path = request.nextUrl.pathname
+  const protectedPage = ['/dashboard', '/consultations', '/admin'].some(
+    prefix => path === prefix || path.startsWith(`${prefix}/`)
+  )
+  if (protectedPage && !user) {
+    const redirect = NextResponse.redirect(new URL('/login', request.url))
+    response.cookies.getAll().forEach(cookie => redirect.cookies.set(cookie))
+    response = redirect
   }
-
-  // 2. Protect Patient routes
-  if (pathname.startsWith('/consultation/') && !pathname.includes('/api/')) {
-    // Extract token from URL
-    // Validate token exists in DB and is not expired
-    // if (!validToken) return NextResponse.redirect(new URL('/invalid-link', request.url))
-  }
-
-  // 3. Prevent indexing
-  const response = NextResponse.next()
   response.headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive')
-  
   return response
 }
 
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
-    '/((?!_next/static|_next/image|favicon.ico).*)',
-  ],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 }

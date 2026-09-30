@@ -1,36 +1,22 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { getStaffContext } from '@/lib/staff'
+import { z } from 'zod'
 
-const supabaseAdmin = createAdminClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const context = await getStaffContext()
+    if (!context.staff) return NextResponse.json({ error: 'Unauthorized' }, { status: context.status })
+    if (!z.string().uuid().safeParse(params.id).success) {
+      return NextResponse.json({ error: 'Invalid consultation ID' }, { status: 400 })
     }
-
-    const { data: consultation, error } = await supabaseAdmin
-      .from('consultations')
-      .select('*')
+    const { data: consultation, error } = await context.admin.from('consultations')
+      .select('id, practice_id, doctor_id, scheduled_for, consultation_type, patient_first_name, patient_last_name, identity_verification_method, note_to_patient, status, created_by, created_at')
       .eq('id', params.id)
+      .eq('practice_id', context.staff.practice_id)
       .single()
-
-    if (error || !consultation) {
-      return NextResponse.json({ error: 'Consultation not found' }, { status: 404 })
-    }
-
-    return NextResponse.json(consultation)
-  } catch (error) {
+    if (error || !consultation) return NextResponse.json({ error: 'Consultation not found' }, { status: 404 })
+    return NextResponse.json(consultation, { headers: { 'Cache-Control': 'no-store' } })
+  } catch {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }

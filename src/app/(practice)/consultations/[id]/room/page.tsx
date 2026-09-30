@@ -23,8 +23,8 @@ export default function DoctorVideoRoom({ params }: { params: { id: string } }) 
 
   return (
     <div className="flex-1 flex flex-col -m-4 sm:-m-6 lg:-m-8 h-[calc(100vh-64px)] relative bg-neutral-900">
-      {/* 
-        Placeholder for the Daily.co frame 
+      {/*
+        Placeholder for the Whereby frame
       */}
       <div className="absolute inset-0 flex items-center justify-center">
         {patientInRoom ? (
@@ -50,11 +50,11 @@ export default function DoctorVideoRoom({ params }: { params: { id: string } }) 
           </Badge>
           <span className="text-sm font-medium text-white">00:15:32</span>
         </div>
-        
+
         <div className="flex items-center space-x-2 bg-neutral-800/80 backdrop-blur rounded-lg p-1 border border-neutral-700">
-          <Button 
-            variant={uploadEnabled ? "success" : "ghost"} 
-            size="sm" 
+          <Button
+            variant={uploadEnabled ? "primary" : "ghost"}
+            size="sm"
             onClick={toggleUpload}
             className={uploadEnabled ? "bg-success-500/20 text-success-400 hover:bg-success-500/30" : "text-neutral-300 hover:text-white"}
           >
@@ -72,9 +72,9 @@ export default function DoctorVideoRoom({ params }: { params: { id: string } }) 
         <Button variant="secondary" size="md" className="rounded-full w-12 h-12 p-0 bg-neutral-700 hover:bg-neutral-600 border-0 text-white">
           <VideoOff className="w-5 h-5" />
         </Button>
-        <Button 
-          variant="danger" 
-          size="lg" 
+        <Button
+          variant="danger"
+          size="lg"
           className="rounded-full px-8 h-12"
           onClick={handleEndCall}
         >

@@ -1,73 +1,52 @@
-export async function createDailyRoom(roomName: string) {
-  // In dev environment with mock flag, return a fake room
-  if (process.env.NEXT_PUBLIC_MOCK_EXTERNAL_SERVICES === 'true') {
-    return {
-      url: `https://fake-daily-domain.daily.co/${roomName}`,
-      name: roomName,
-    }
-  }
+import 'server-only'
+import { z } from 'zod'
 
-  const apiKey = process.env.DAILY_API_KEY
-  if (!apiKey) {
-    throw new Error('DAILY_API_KEY is missing')
-  }
+const wherebyUrl = z.string().url().refine(value => {
+  const url = new URL(value)
+  return url.protocol === 'https:' && url.hostname.endsWith('.whereby.com')
+})
+const meetingSchema = z.object({
+  meetingId: z.union([z.string(), z.number()]).transform(String),
+  roomUrl: wherebyUrl,
+  hostRoomUrl: wherebyUrl,
+})
 
-  const response = await fetch('https://api.daily.co/v1/rooms', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      name: roomName,
-      privacy: 'private', // We will use tokens to let users in
-      properties: {
-        enable_chat: false, // Simple MVP, no chat
-        enable_screenshare: true,
-        start_video_off: false,
-        start_audio_off: false,
-        enable_recording: 'none', // Strictly disable recording for MVP
-      },
-    }),
-  })
-
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(`Daily.co API error: ${error.info || response.statusText}`)
-  }
-
-  return response.json()
+function authorization() {
+  const key = process.env.WHEREBY_API_KEY
+  if (!key) throw new Error('WHEREBY_API_KEY is missing')
+  return { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' }
 }
 
-export async function createDailyToken(roomName: string, isOwner: boolean = false) {
-  if (process.env.NEXT_PUBLIC_MOCK_EXTERNAL_SERVICES === 'true') {
-    return 'fake-token-123'
+// Server-only adapter. Do not return hostRoomUrl to patients or place it in logs.
+// Room routes and lifecycle persistence will be connected in the next milestone.
+export async function createWherebyMeeting(endDate: Date) {
+  if (!Number.isFinite(endDate.getTime()) || endDate.getTime() <= Date.now()) {
+    throw new Error('Meeting endDate must be in the future')
   }
-
-  const apiKey = process.env.DAILY_API_KEY
-  if (!apiKey) {
-    throw new Error('DAILY_API_KEY is missing')
-  }
-
-  const response = await fetch('https://api.daily.co/v1/meeting-tokens', {
+  const response = await fetch('https://api.whereby.dev/v1/meetings', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
+    headers: authorization(),
+    cache: 'no-store',
+    signal: AbortSignal.timeout(15000),
     body: JSON.stringify({
-      properties: {
-        room_name: roomName,
-        is_owner: isOwner,
-      },
+      endDate: endDate.toISOString(),
+      roomMode: 'normal',
+      isLocked: true,
+      roomNamePrefix: 'consultation',
+      fields: ['hostRoomUrl'],
     }),
   })
+  if (!response.ok) throw new Error(`Whereby meeting creation failed (${response.status})`)
+  return meetingSchema.parse(await response.json())
+}
 
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(`Daily.co API error: ${error.info || response.statusText}`)
-  }
-
-  const data = await response.json()
-  return data.token
+export async function deleteWherebyMeeting(meetingId: string) {
+  if (!meetingId) throw new Error('Meeting ID is required')
+  const response = await fetch(`https://api.whereby.dev/v1/meetings/${encodeURIComponent(meetingId)}`, {
+    method: 'DELETE',
+    headers: authorization(),
+    cache: 'no-store',
+    signal: AbortSignal.timeout(15000),
+  })
+  if (!response.ok) throw new Error(`Whereby meeting deletion failed (${response.status})`)
 }

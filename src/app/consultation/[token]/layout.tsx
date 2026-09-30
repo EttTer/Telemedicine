@@ -1,11 +1,7 @@
-import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { getPatientConsultation } from '@/lib/patient-access'
 import { Stethoscope } from 'lucide-react'
 
-// Use admin client so unauthenticated patients can access their consultation
-const supabaseAdmin = createAdminClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+export const dynamic = 'force-dynamic'
 
 export default async function PatientLayout({
   children,
@@ -14,13 +10,7 @@ export default async function PatientLayout({
   children: React.ReactNode
   params: { token: string }
 }) {
-  // For MVP the consultation ID is used directly as the token in the URL.
-  // In production we would look up consultation_tokens by token_hash instead.
-  const { data: consultation } = await supabaseAdmin
-    .from('consultations')
-    .select('id, status, patient_first_name, practices(name, contact_phone)')
-    .eq('id', params.token)
-    .single()
+  const consultation = await getPatientConsultation(params.token)
 
   if (!consultation) {
     return (

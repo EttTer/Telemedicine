@@ -2,16 +2,22 @@
 
 A secure, browser-based telemedicine waiting-room platform for outpatient medical practices in the Czech Republic.
 
-## Features
+## Current status
 
-- **Practice Management**: Admin/Doctor/Nurse roles with Row Level Security.
-- **Consultation Links**: Unique, secure, one-time links for patients.
-- **Patient Check-in**: Identity verification, telemedicine instructions, and recording consent.
-- **Virtual Waiting Room**: Real-time status updates, camera/mic testing.
-- **Controlled Document Upload**: Patients can only upload documents when explicitly requested by staff.
-- **Embedded Video Room**: Secure video consultations (no recording enabled in MVP).
-- **Consultation Summary**: Exportable record of the consultation including times, participants, verification status, and notes.
-- **Audit Logging**: Immutable trail of critical actions.
+Work in progress; not ready for patient use. Consultation creation and staff sign-in
+have backend code. Patient check-in, waiting room, video UI, uploads and summaries
+remain unfinished. Whereby is the chosen provider; the server adapter is prepared
+but is not yet connected to the consultation lifecycle.
+
+## Restoration checkpoint
+
+- Scoped consultation reads to the authenticated staff member's practice.
+- Removed the diagnostic endpoint that exposed staff across practices.
+- Unified application staff lookup and added session refresh and sign-out.
+- Added a server-only Whereby adapter; removed the unused Daily dependency.
+- Existing Supabase RLS repair applied and verified on 2026-09-30 (see supabase/README.md).
+- Patient session exchange, invitation reissue, atomic consultation creation,
+  dependency security upgrades and full end-to-end tests are still required.
 
 ## Technology Stack
 
@@ -24,15 +30,13 @@ A secure, browser-based telemedicine waiting-room platform for outpatient medica
 1. **Clone the repository**
 2. **Install dependencies**: `npm install`
 3. **Copy environment variables**: `cp .env.example .env.local`
-4. **Set up Supabase**:
-   - Create a new project on [Supabase](https://supabase.com).
-   - Run the SQL migrations in `supabase/migrations/` sequentially in the SQL Editor.
-   - Configure Authentication providers (Email) if needed.
-   - Update `.env.local` with your Supabase URL and keys.
-5. **Set up Video Provider**:
-   - Create a Whereby account.
-   - Generate an API key.
-   - Update `.env.local` with your Whereby domain and API key.
+4. **Inspect the existing Supabase project**:
+   - Follow `supabase/README.md`; do not replay the legacy migrations.
+   - Configure the environment with the existing project URL and keys.
+5. **Set up Whereby Embedded**:
+   - Configure `WHEREBY_API_KEY` on the server.
+   - Adapter reference: https://docs.whereby.com/whereby-product-features/using-the-rest-api
+   - Real rooms have not been tested yet. Recording policy must be verified before pilot use.
 6. **Run locally**: `npm run dev`
 
 > [!CAUTION]

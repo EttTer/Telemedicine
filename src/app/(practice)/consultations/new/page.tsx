@@ -19,6 +19,7 @@ export default function NewConsultationPage() {
     note_to_patient: '',
   })
 
+  const [createdLink, setCreatedLink] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   // We are using a simplified direct-to-db approach for MVP via API
@@ -42,8 +43,8 @@ export default function NewConsultationPage() {
         throw new Error(errorData.error || 'Failed to create consultation')
       }
       
-      const { id } = await response.json()
-      router.push(`/consultations/${id}`)
+      const { token } = await response.json()
+      setCreatedLink(`${window.location.origin}/consultation/${token}`)
     } catch (err: any) {
       console.error(err)
       setError(err.message)
@@ -51,6 +52,18 @@ export default function NewConsultationPage() {
       setIsLoading(false)
     }
   }
+
+  if (createdLink) return (
+    <Card className="max-w-2xl mx-auto">
+      <CardHeader><CardTitle>Pozvánka byla vytvořena</CardTitle></CardHeader>
+      <CardContent className="space-y-4">
+        <p>Odkaz si nyní zkopírujte a předejte pacientovi. Platí 24 hodin. Po opuštění této stránky jej nelze znovu zobrazit.</p>
+        <Input aria-label="Odkaz pro pacienta" readOnly value={createdLink} onFocus={event => event.target.select()} />
+        <p className="text-sm">Testovací verze: čekárna a videohovor dosud nejsou dokončené.</p>
+        <Button onClick={() => router.push('/dashboard')}>Zpět na přehled</Button>
+      </CardContent>
+    </Card>
+  )
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">

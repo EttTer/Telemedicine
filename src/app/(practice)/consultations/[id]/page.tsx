@@ -18,11 +18,6 @@ export default function ConsultationDetailPage() {
   const [copied, setCopied] = useState(false)
   const [consultation, setConsultation] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [patientLink, setPatientLink] = useState('')
-
-  useEffect(() => {
-    setPatientLink(`${window.location.origin}/consultation/${id}`)
-  }, [id])
 
   useEffect(() => {
     const fetchConsultation = async () => {
@@ -40,14 +35,6 @@ export default function ConsultationDetailPage() {
     }
     fetchConsultation()
   }, [id])
-
-  // patientLink is set in useEffect above to avoid SSR/client hydration mismatch
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(patientLink)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
 
   const statusLabels: Record<string, string> = {
     scheduled: 'Naplánováno',
@@ -78,39 +65,11 @@ export default function ConsultationDetailPage() {
         <h1 className="text-2xl font-bold tracking-tight text-neutral-900">Detail konzultace</h1>
       </div>
 
-      {/* Patient link card — the most important element */}
-      <Card className="border-2 border-primary-200 bg-primary-50/40">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center text-primary-800">
-            <ExternalLink className="w-5 h-5 mr-2" />
-            Odkaz pro pacienta
-          </CardTitle>
-          <CardDescription>
-            Odešlete tento odkaz pacientovi. Odkaz je platný 24 hodin.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center gap-2 bg-white border border-primary-200 rounded-lg p-3">
-            <span className="flex-1 text-sm text-neutral-700 font-mono break-all">
-              {patientLink}
-            </span>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleCopy}
-              className="shrink-0"
-            >
-              {copied ? (
-                <><Check className="w-4 h-4 mr-1" /> Zkopírováno</>
-              ) : (
-                <><Copy className="w-4 h-4 mr-1" /> Kopírovat</>
-              )}
-            </Button>
-          </div>
-          <p className="text-xs text-neutral-500 flex items-center">
-            <ShieldCheck className="w-3 h-3 mr-1 text-success-500" />
-            Odkaz je kryptograficky podepsán. Pacient bude přesměrován do zabezpečené čekárny.
-          </p>
+      <Card>
+        <CardHeader><CardTitle>Pozvánka pacienta</CardTitle></CardHeader>
+        <CardContent>
+          Bezpečný odkaz se zobrazí pouze při vytvoření konzultace. Z jejího ID jej nelze odvodit.
+          Opětovné vystavení pozvánky bude doplněno v dalším kroku.
         </CardContent>
       </Card>
 
