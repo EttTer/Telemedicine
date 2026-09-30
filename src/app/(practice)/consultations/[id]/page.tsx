@@ -40,8 +40,8 @@ export default function ConsultationDetailPage({ params }: { params: { id: strin
     } catch (e) { setActionError(e instanceof Error ? e.message : 'Pozvánku nelze vystavit.') }
     finally { setBusy(false) }
   }
-  const patient = consultation?.patients?.[0]
-  const waiting = consultation?.waiting_room_sessions?.[0]
+  const patient = Array.isArray(consultation?.patients) ? consultation.patients[0] : consultation?.patients
+  const waiting = Array.isArray(consultation?.waiting_room_sessions) ? consultation.waiting_room_sessions[0] : consultation?.waiting_room_sessions
   const present = waiting && Date.now()-new Date(waiting.updated_at).getTime()<60000
   return <div className="max-w-3xl mx-auto space-y-6">
     <Link href="/dashboard" className="underline">Zpět na přehled</Link>

@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/Button'
 import Link from 'next/link'
 import { Video, Clock, Users, FileText } from 'lucide-react'
 
+const waitingUpdatedAt = (value: any) => (Array.isArray(value) ? value[0] : value)?.updated_at
+
 export const revalidate = 0 // Disable cache for dashboard
 
 export default async function DashboardPage() {
@@ -90,7 +92,7 @@ export default async function DashboardPage() {
                       <p className="text-sm text-neutral-500">{consultation.consultation_type}</p>
                     </div>
                     <div className="flex items-center space-x-3">
-                      <Badge variant="warning">{Date.now()-new Date(consultation.waiting_room_sessions?.[0]?.updated_at || 0).getTime()<60000 ? 'Čeká' : 'Bez spojení'}</Badge>
+                      <Badge variant="warning">{Date.now()-new Date(waitingUpdatedAt(consultation.waiting_room_sessions) || 0).getTime()<60000 ? 'Čeká' : 'Bez spojení'}</Badge>
                       <Link href={`/consultations/${consultation.id}`}>
                         <Button size="sm" variant="secondary">Detail</Button>
                       </Link>
