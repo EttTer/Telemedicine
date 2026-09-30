@@ -15,8 +15,8 @@ but is not yet connected to the consultation lifecycle.
 - Removed the diagnostic endpoint that exposed staff across practices.
 - Unified application staff lookup and added session refresh and sign-out.
 - Added a server-only Whereby adapter; removed the unused Daily dependency.
-- Existing Supabase schema must be inspected before migration (see supabase/README.md).
-- Patient session exchange, invitation reissue, RLS repair, atomic consultation creation,
+- Existing Supabase RLS repair applied and verified on 2026-09-30 (see supabase/README.md).
+- Patient session exchange, invitation reissue, atomic consultation creation,
   dependency security upgrades and full end-to-end tests are still required.
 
 ## Technology Stack
