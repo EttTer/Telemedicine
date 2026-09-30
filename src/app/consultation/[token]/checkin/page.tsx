@@ -10,6 +10,7 @@ import { ArrowRight } from 'lucide-react'
 
 export default function CheckinPage({ params }: { params: { token: string } }) {
   const router = useRouter()
+  const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     first_name: '',
@@ -24,14 +25,16 @@ export default function CheckinPage({ params }: { params: { token: string } }) {
     setIsLoading(true)
 
     try {
-      // In a real app we'd save this to the `patients` table via an API route
-      // await fetch(`/api/consultations/${params.token}/patient`, { method: 'POST', body: JSON.stringify(formData) })
-      
-      // For MVP, we simulate the delay and redirect to instructions
-      await new Promise(resolve => setTimeout(resolve, 600))
+      setError('')
+      const response = await fetch(`/api/patient/${params.token}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'checkin', data: formData }),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error)
       router.push(`/consultation/${params.token}/instructions`)
     } catch (error) {
-      console.error(error)
+      setError(error instanceof Error ? error.message : 'Údaje se nepodařilo uložit.')
     } finally {
       setIsLoading(false)
     }
@@ -54,6 +57,7 @@ export default function CheckinPage({ params }: { params: { token: string } }) {
             <CardDescription>Vyplňte prosím základní údaje pro lékaře.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {error && <p role="alert" className="text-danger-700">{error}</p>}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="first_name">Jméno *</Label>

@@ -1,9 +1,17 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
+import { getPatientSecret, hashSecret } from '@/lib/workflow'
+import { createAdminClient } from '@/lib/supabase/server'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Video, ShieldCheck } from 'lucide-react'
 
-export default function ConsultationEntryPage({ params }: { params: { token: string } }) {
+export default async function ConsultationEntryPage({ params }: { params: { token: string } }) {
+  const secret = getPatientSecret(params.token)
+  if (secret) {
+    const { data, error } = await createAdminClient().rpc('tm_patient_action', { p_token_hash: hashSecret(params.token), p_session_hash: hashSecret(secret), p_action: 'status' })
+    if (!error && data) redirect(`/consultation/${params.token}/${data.acknowledged || ['completed','cancelled'].includes(data.status) ? 'waiting' : 'instructions'}`)
+  }
   return (
     <div className="flex-1 flex flex-col justify-center items-center py-12">
       <Card className="w-full max-w-lg">

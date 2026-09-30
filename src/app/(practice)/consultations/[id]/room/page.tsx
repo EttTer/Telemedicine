@@ -1,87 +1,40 @@
 'use client'
-
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
-import { VideoOff, PhoneOff, Settings, Upload, CheckCircle2 } from 'lucide-react'
-import { Badge } from '@/components/ui/Badge'
+import { WherebyRoom } from '@/components/WherebyRoom'
 
-export default function DoctorVideoRoom({ params }: { params: { id: string } }) {
-  const router = useRouter()
-  const [patientInRoom, setPatientInRoom] = useState(true)
-  const [uploadEnabled, setUploadEnabled] = useState(false)
-
-  const handleEndCall = () => {
-    // End the session, update DB
-    router.push(`/consultations/${params.id}/summary`)
+export default function StaffRoom({ params }: { params: { id: string } }) {
+  const [room, setRoom] = useState('')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [active, setActive] = useState(false)
+  const [ended, setEnded] = useState(false)
+  useEffect(() => {
+    let disposed = false
+    fetch(`/api/consultations/${params.id}/video`, { cache: 'no-store' }).then(async response => {
+      const data = await response.json()
+      if (!disposed && response.ok) { setRoom(data.hostRoomUrl || ''); setEnded(data.status === 'completed'); setActive(data.status === 'in_progress') }
+    }).catch(() => { if (!disposed) setError('Stav hovoru se nepodařilo načíst.') })
+    return () => { disposed = true }
+  }, [params.id])
+  async function act(action: 'start' | 'end') {
+    setBusy(true); setError('')
+    try {
+      const response = await fetch(`/api/consultations/${params.id}/video`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error)
+      if (action === 'start') { setRoom(data.hostRoomUrl); setActive(true) }
+      else { setRoom(''); setEnded(true); setActive(false) }
+    } catch (e) { setError(e instanceof Error ? e.message : 'Operace se nezdařila.') }
+    finally { setBusy(false) }
   }
-
-  const toggleUpload = () => {
-    // In reality this calls the API to grant/revoke document upload permission
-    setUploadEnabled(!uploadEnabled)
-  }
-
-  return (
-    <div className="flex-1 flex flex-col -m-4 sm:-m-6 lg:-m-8 h-[calc(100vh-64px)] relative bg-neutral-900">
-      {/*
-        Placeholder for the Whereby frame
-      */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        {patientInRoom ? (
-          <div className="text-center text-neutral-400">
-            <VideoOff className="w-12 h-12 mx-auto mb-4 opacity-30" />
-            <p className="text-lg text-white">Pacient je připojen</p>
-          </div>
-        ) : (
-          <div className="text-center text-neutral-400">
-            <div className="animate-pulse flex flex-col items-center">
-              <div className="h-12 w-12 rounded-full border-4 border-t-primary-500 border-neutral-700 animate-spin mb-4"></div>
-              <p className="text-lg">Čekání na pacienta...</p>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Top bar controls */}
-      <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-neutral-900/80 to-transparent flex justify-between items-center z-10">
-        <div className="flex items-center space-x-3">
-          <Badge variant="primary" className="bg-primary-500/20 text-primary-300 border-primary-500/50">
-            Probíhá konzultace
-          </Badge>
-          <span className="text-sm font-medium text-white">00:15:32</span>
-        </div>
-
-        <div className="flex items-center space-x-2 bg-neutral-800/80 backdrop-blur rounded-lg p-1 border border-neutral-700">
-          <Button
-            variant={uploadEnabled ? "primary" : "ghost"}
-            size="sm"
-            onClick={toggleUpload}
-            className={uploadEnabled ? "bg-success-500/20 text-success-400 hover:bg-success-500/30" : "text-neutral-300 hover:text-white"}
-          >
-            {uploadEnabled ? <CheckCircle2 className="w-4 h-4 mr-2" /> : <Upload className="w-4 h-4 mr-2" />}
-            {uploadEnabled ? "Nahrávání souborů povoleno" : "Povolit nahrání souborů"}
-          </Button>
-          <Button variant="ghost" size="sm" className="text-neutral-300 hover:text-white">
-            <Settings className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Bottom controls */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-neutral-800/80 backdrop-blur-sm p-3 rounded-2xl border border-neutral-700 z-10">
-        <Button variant="secondary" size="md" className="rounded-full w-12 h-12 p-0 bg-neutral-700 hover:bg-neutral-600 border-0 text-white">
-          <VideoOff className="w-5 h-5" />
-        </Button>
-        <Button
-          variant="danger"
-          size="lg"
-          className="rounded-full px-8 h-12"
-          onClick={handleEndCall}
-        >
-          <PhoneOff className="w-5 h-5 mr-2" />
-          Ukončit konzultaci
-        </Button>
-      </div>
-    </div>
-  )
+  return <div className="space-y-5">
+    <Link href={`/consultations/${params.id}`} className="underline">Zpět na detail konzultace</Link>
+    <h1 className="text-2xl font-bold">{ended ? 'Konzultace byla ukončena' : 'Videohovor'}</h1>
+    {error && <p role="alert" className="text-danger-700">{error}</p>}
+    {!ended && !room && !active && <><p>Hovor lze zahájit, když pacient dokončí vstup a čeká s otevřenou čekárnou.</p><Button isLoading={busy} onClick={() => act('start')}>Zahájit hovor a pozvat pacienta</Button></>}
+    {active && !room && <><p>Místnost již není dostupná. Dokončete konzultaci tlačítkem níže.</p><Button variant="danger" isLoading={busy} onClick={() => act('end')}>Ukončit konzultaci</Button></>}
+    {room && <><p className="text-sm">Pacient se připojuje jako host. V místnosti Whereby jej vpusťte a ověřte jeho totožnost před zdravotní konzultací.</p><WherebyRoom url={room} /><Button variant="danger" isLoading={busy} onClick={() => act('end')}>Ukončit konzultaci pro všechny</Button><p className="text-sm text-neutral-500">Pouhé zavření okna konzultaci neukončí. Použijte tlačítko výše.</p></>}
+  </div>
 }

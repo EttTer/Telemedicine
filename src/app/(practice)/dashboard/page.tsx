@@ -1,3 +1,4 @@
+import { RefreshDashboard } from '@/components/RefreshDashboard'
 import { createClient } from '@/lib/supabase/server'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -11,7 +12,7 @@ export default async function DashboardPage() {
   const supabase = createClient()
   
   // Get active consultations for this practice
-  const { data: consultations } = await supabase
+  const { data: consultations, error } = await supabase
     .from('consultations')
     .select(`
       id,
@@ -20,17 +21,21 @@ export default async function DashboardPage() {
       scheduled_for,
       status,
       consultation_type,
-      waiting_room_sessions(status, joined_at),
+      waiting_room_sessions(status, joined_at, updated_at),
       identity_verifications(status, method)
     `)
     .in('status', ['scheduled', 'waiting', 'in_progress'])
     .order('scheduled_for', { ascending: true })
 
-  const waitingPatients = consultations?.filter(c => c.status === 'waiting' || c.waiting_room_sessions?.[0]?.status === 'waiting') || []
-  const upcomingConsultations = consultations?.filter(c => c.status === 'scheduled' && c.waiting_room_sessions?.[0]?.status !== 'waiting') || []
+  const waitingPatients = consultations?.filter(c => c.status === 'waiting') || []
+  const upcomingConsultations = consultations?.filter(c => c.status === 'scheduled') || []
 
+  const ongoing = consultations?.filter(c => c.status === 'in_progress') || []
   return (
     <div className="space-y-6">
+      <RefreshDashboard />
+      {error && <p role="alert" className="text-danger-700">Konzultace se nepodařilo načíst. Obnovte stránku nebo se znovu přihlaste.</p>}
+      {ongoing.length > 0 && <Card><CardHeader><CardTitle>Probíhající hovory</CardTitle></CardHeader><CardContent className="space-y-3">{ongoing.map(c => <div key={c.id} className="flex justify-between"><p>{c.patient_first_name} {c.patient_last_name}</p><Link href={`/consultations/${c.id}/room`} className="underline">Vrátit se do hovoru</Link></div>)}</CardContent></Card>}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight text-neutral-900">Přehled konzultací</h1>
       </div>
@@ -49,7 +54,7 @@ export default async function DashboardPage() {
         <Card>
           <CardContent className="p-6 flex flex-col justify-center">
             <div className="flex items-center justify-between space-y-0 pb-2">
-              <p className="text-sm font-medium text-neutral-500">Dnes naplánováno</p>
+              <p className="text-sm font-medium text-neutral-500">Naplánované konzultace</p>
               <CalendarIcon className="h-4 w-4 text-primary-500" />
             </div>
             <div className="text-3xl font-bold">{upcomingConsultations.length}</div>
@@ -85,7 +90,7 @@ export default async function DashboardPage() {
                       <p className="text-sm text-neutral-500">{consultation.consultation_type}</p>
                     </div>
                     <div className="flex items-center space-x-3">
-                      <Badge variant="warning">Čeká</Badge>
+                      <Badge variant="warning">{Date.now()-new Date(consultation.waiting_room_sessions?.[0]?.updated_at || 0).getTime()<60000 ? 'Čeká' : 'Bez spojení'}</Badge>
                       <Link href={`/consultations/${consultation.id}`}>
                         <Button size="sm" variant="secondary">Detail</Button>
                       </Link>

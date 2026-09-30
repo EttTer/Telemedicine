@@ -9,7 +9,7 @@ const nextConfig = {
           { key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive' },
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Referrer-Policy', value: 'no-referrer' },
           {
             key: 'Permissions-Policy',
             value: 'camera=(self "https://*.whereby.com"), microphone=(self "https://*.whereby.com"), geolocation=()',

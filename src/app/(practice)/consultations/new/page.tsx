@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { v4 as uuidv4 } from 'uuid'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
@@ -15,10 +14,11 @@ export default function NewConsultationPage() {
     patient_first_name: '',
     patient_last_name: '',
     consultation_type: 'Pravidelná kontrola',
-    identity_verification_method: 'SMS kód',
+    identity_verification_method: 'Ověření lékařem v hovoru',
     note_to_patient: '',
   })
 
+  const [createdId, setCreatedId] = useState('')
   const [createdLink, setCreatedLink] = useState('')
   const [error, setError] = useState<string | null>(null)
 
@@ -43,7 +43,8 @@ export default function NewConsultationPage() {
         throw new Error(errorData.error || 'Failed to create consultation')
       }
       
-      const { token } = await response.json()
+      const { id, token } = await response.json()
+      setCreatedId(id)
       setCreatedLink(`${window.location.origin}/consultation/${token}`)
     } catch (err: any) {
       console.error(err)
@@ -59,8 +60,8 @@ export default function NewConsultationPage() {
       <CardContent className="space-y-4">
         <p>Odkaz si nyní zkopírujte a předejte pacientovi. Platí 24 hodin. Po opuštění této stránky jej nelze znovu zobrazit.</p>
         <Input aria-label="Odkaz pro pacienta" readOnly value={createdLink} onFocus={event => event.target.select()} />
-        <p className="text-sm">Testovací verze: čekárna a videohovor dosud nejsou dokončené.</p>
-        <Button onClick={() => router.push('/dashboard')}>Zpět na přehled</Button>
+        <p className="text-sm">V detailu konzultace uvidíte příchod pacienta a můžete vystavit náhradní pozvánku.</p>
+        <Button onClick={() => router.push(`/consultations/${createdId}`)}>Otevřít detail konzultace</Button>
       </CardContent>
     </Card>
   )
@@ -132,7 +133,6 @@ export default function NewConsultationPage() {
                 onChange={e => setFormData(p => ({ ...p, identity_verification_method: e.target.value }))}
               >
                 <option value="Známo z předchozí návštěvy">Známo z předchozí návštěvy</option>
-                <option value="SMS kód">Zaslaný SMS kód</option>
                 <option value="Ověření lékařem v hovoru">Ověření lékařem na začátku hovoru</option>
               </select>
               <p className="text-xs text-neutral-500">
