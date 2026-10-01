@@ -13,7 +13,7 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   return NextResponse.redirect(
-    new URL("/login", process.env.APP_ORIGIN || request.url),
+    new URL("/login", request.headers.get("origin")!),
     303,
   );
 }

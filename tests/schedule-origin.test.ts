@@ -106,3 +106,79 @@ describe("deployment and scheduled consultations", () => {
     }
   });
 });
+
+describe("publishing Netlify builds on the primary domain", () => {
+  it("builds a precise allowlist for the main domain, preview and immutable deploy", () => {
+    const output = execFileSync(
+      process.execPath,
+      [
+        "--input-type=module",
+        "-e",
+        "import config from './next.config.mjs'; process.stdout.write(JSON.stringify(config.env))",
+      ],
+      {
+        cwd: process.cwd(),
+        env: {
+          ...process.env,
+          APP_ORIGIN: "",
+          URL: "https://easytelemedicine.netlify.app",
+          DEPLOY_PRIME_URL:
+            "https://deploy-preview-3--easytelemedicine.netlify.app",
+          DEPLOY_URL: "https://build123--easytelemedicine.netlify.app",
+        },
+      },
+    );
+    const env = JSON.parse(output.toString());
+    expect(env.APP_ORIGIN).toBe("https://easytelemedicine.netlify.app");
+    vi.stubEnv("APP_ORIGIN", env.APP_ORIGIN);
+    vi.stubEnv("APP_TRUSTED_ORIGINS", env.APP_TRUSTED_ORIGINS);
+    vi.stubEnv("NODE_ENV", "production");
+    const request = (origin: string) =>
+      new Request("http://internal.netlify.local/api/consultations", {
+        headers: { origin, "x-forwarded-host": "evil.example" },
+      });
+    for (const origin of [
+      "https://easytelemedicine.netlify.app",
+      "https://deploy-preview-3--easytelemedicine.netlify.app",
+      "https://build123--easytelemedicine.netlify.app",
+    ])
+      expect(sameOrigin(request(origin))).toBe(true);
+    for (const origin of [
+      "https://evil.example",
+      "https://deploy-preview-4--easytelemedicine.netlify.app",
+      "https://easytelemedicine.netlify.app.evil.example",
+      "null",
+    ])
+      expect(sameOrigin(request(origin))).toBe(false);
+  });
+  it("retains the known project domain even when APP_ORIGIN was set to a preview", () => {
+    const output = execFileSync(
+      process.execPath,
+      [
+        "--input-type=module",
+        "-e",
+        "import config from './next.config.mjs'; process.stdout.write(config.env.APP_TRUSTED_ORIGINS)",
+      ],
+      {
+        cwd: process.cwd(),
+        env: {
+          ...process.env,
+          APP_ORIGIN: "https://deploy-preview-3--easytelemedicine.netlify.app",
+          URL: "https://easytelemedicine.netlify.app",
+        },
+      },
+    );
+    vi.stubEnv(
+      "APP_ORIGIN",
+      "https://deploy-preview-3--easytelemedicine.netlify.app",
+    );
+    vi.stubEnv("APP_TRUSTED_ORIGINS", output.toString());
+    expect(
+      sameOrigin(
+        new Request("http://internal.netlify.local/api/consultations", {
+          headers: { origin: "https://easytelemedicine.netlify.app" },
+        }),
+      ),
+    ).toBe(true);
+  });
+});

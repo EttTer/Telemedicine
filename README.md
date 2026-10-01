@@ -66,8 +66,7 @@ execute them; the server verifies staff identity or the patient session before r
 Known operational limits: server crashes after external room creation may leave an orphan
 room until the provider expiry/cleanup, and there is no background reconciliation job yet.
 The 2-hour room expiry is a provider expiry, not a precise automatic consultation timeout.
-Summary editing, uploads, SMS identity verification, automated invitations and history views
-are not part of this checkpoint.
+SMS identity verification and automated invitation delivery are not configured.
 
 
 ## Scheduling, records and attachments
@@ -94,7 +93,7 @@ are not part of this checkpoint.
 - Legacy active records lacking a provider meeting ID can be completed manually. Actual
   provider meetings must be deleted successfully before completing the record.
 - `APP_ORIGIN` is a public, build-time value for CSRF verification. Netlify builds infer it
-  from DEPLOY_PRIME_URL/URL; set it explicitly for a custom domain. No forwarded host is trusted.
+  from URL; set it explicitly for a custom domain. The build also permits the exact primary project domain and its DEPLOY_PRIME_URL/DEPLOY_URL, so publishing a preview on the primary domain does not break requests. No request or forwarded host is trusted.
 - Apply the `clinical_workspace` migration after the two restoration migrations. Existing
   consultations are retained; old records are not automatically closed or assigned new dates.
 - `npm run test:clinical` exercises record revisions, persistence after ending, upload grants,

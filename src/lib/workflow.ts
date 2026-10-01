@@ -20,11 +20,15 @@ export const json = (body: unknown, status = 200) =>
 
 // All browser mutations must originate from this deployment, including patient cookies.
 export function sameOrigin(request: Request) {
-  const expected =
-    process.env.APP_ORIGIN ||
-    (process.env.NODE_ENV !== "production" ? new URL(request.url).origin : "");
+  const trusted = [
+    process.env.APP_ORIGIN,
+    ...(process.env.APP_TRUSTED_ORIGINS || "").split(","),
+  ].filter(Boolean);
+  if (!trusted.length && process.env.NODE_ENV !== "production") {
+    trusted.push(new URL(request.url).origin);
+  }
   const origin = request.headers.get("origin");
-  return !!expected && origin === expected;
+  return !!origin && origin !== "null" && trusted.includes(origin);
 }
 export function rpcError(error: { code?: string; message?: string }) {
   if (error.code === "42501")

@@ -1,12 +1,25 @@
 /** @type {import('next').NextConfig} */
+// A build may be published on the primary domain after being built as a preview.
+// Keep explicit project origins; never derive trust from request/forwarded headers.
+const primaryOrigin = new URL(
+  process.env.APP_ORIGIN ||
+    process.env.URL ||
+    "https://easytelemedicine.netlify.app",
+).origin;
+const trustedOrigins = [
+  ...new Set([
+    primaryOrigin,
+    "https://easytelemedicine.netlify.app",
+    ...(process.env.DEPLOY_PRIME_URL
+      ? [new URL(process.env.DEPLOY_PRIME_URL).origin]
+      : []),
+    ...(process.env.DEPLOY_URL ? [new URL(process.env.DEPLOY_URL).origin] : []),
+  ]),
+];
 const nextConfig = {
   env: {
-    APP_ORIGIN: new URL(
-      process.env.APP_ORIGIN ||
-        process.env.DEPLOY_PRIME_URL ||
-        process.env.URL ||
-        "https://easytelemedicine.netlify.app",
-    ).origin,
+    APP_ORIGIN: primaryOrigin,
+    APP_TRUSTED_ORIGINS: trustedOrigins.join(","),
   },
   // Disable server-side indexing by search engines for all pages
   async headers() {

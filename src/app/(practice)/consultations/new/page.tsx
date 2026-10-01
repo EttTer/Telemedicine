@@ -26,7 +26,9 @@ export default function NewConsultationPage() {
     note_to_patient: "",
   });
 
-  const [scheduled, setScheduled] = useState(pragueLocal());
+  const [scheduled, setScheduled] = useState(
+    pragueLocal(new Date(Date.now() + 15 * 60000)),
+  );
   const [expires, setExpires] = useState("");
   const [createdId, setCreatedId] = useState("");
   const [createdLink, setCreatedLink] = useState("");
