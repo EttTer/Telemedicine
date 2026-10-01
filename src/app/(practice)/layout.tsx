@@ -17,7 +17,6 @@ export default async function PracticeLayout({
   const context = await getStaffContext();
   if (!context.staff) {
     if (context.status === 401) redirect("/login");
-    if (context.status === 428) redirect("/security");
     return (
       <main className="p-8">
         Účet nemá přiřazenou ordinaci. Kontaktujte správce.
@@ -61,7 +60,6 @@ export default async function PracticeLayout({
                 Historie
               </Link>
               <Link href="/practice-settings" className="px-3 py-2 text-sm font-medium rounded-md text-neutral-600 hover:bg-neutral-100">Profil ordinace</Link>
-              <Link href="/security" className="px-3 py-2 text-sm font-medium rounded-md text-neutral-600 hover:bg-neutral-100">Zabezpečení účtu</Link>
 
             </nav>
           </div>

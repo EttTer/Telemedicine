@@ -12,7 +12,7 @@ export default async function History({
   searchParams: Promise<{ day?: string; page?: string }>;
 }) {
   const context=await getStaffContext();
-  if (!context.staff) redirect(context.status===428?"/security":"/login");
+  if (!context.staff) redirect("/login");
   const searchParams = await pendingSearch;
   const day =
     searchParams.day && validDay(searchParams.day) ? searchParams.day : "";

@@ -49,11 +49,11 @@ No real Whereby call has been verified by the automated tests.
 Applied `20261001100825_compliance_workflow.sql` to the hosted project. The migration preserves existing data and adds instruction evidence,
 practice disclosure fields, immutable saved versions/final snapshots and audit immutability.
 Existing notes are imported as baseline versions only. It does not fabricate verification or
-consent for old consultations. RPC wrappers remain invoker and service-role-only. MFA is
-required through restrictive authenticated policies on every public table, in addition to
-server-side checks. Existing patient cookie/session flow does not require staff MFA.
+consent for old consultations. RPC wrappers remain invoker and service-role-only. Password-only staff access is enabled by `password_only_staff_login.sql`, which removes
+only the extra MFA policies. Own-practice RLS, grants and server-side authentication remain
+in place. Patient cookie/session access is unchanged.
 
-The app is still a test deployment. MFA enrollment/recovery, compromised-password protection,
+The app is still a test deployment. Stronger staff authentication, compromised-password protection,
 session limits, actual video settings, backup of database AND Storage, tested restoration,
 retention and operational/legal review require verification with the account operator.
 `npm run test:compliance` exercises the full synthetic clinical flow and new safeguards.

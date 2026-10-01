@@ -8,7 +8,7 @@ export async function POST(request: Request) {
   if (!sameOrigin(request)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
-  try { const context=await getStaffContext({allowMfaSetup:true}); if(context.staff) await accessLog(context,"staff_logout_requested"); } catch { /* Logout must remain possible during an audit outage. */ }
+  try { const context=await getStaffContext(); if(context.staff) await accessLog(context,"staff_logout_requested"); } catch { /* Logout must remain possible during an audit outage. */ }
   const { error } = await (await createClient()).auth.signOut();
   if (error)
     return NextResponse.json(

@@ -10,7 +10,7 @@ one-time invitation exchange for an HttpOnly patient session, replacement invita
 saved patient intake and instruction acknowledgement, polling waiting room, Whereby
 room creation/admission and explicit termination. The guest never receives the host URL.
 
-Notes, attachments, scheduling, record history, instruction evidence and staff MFA are implemented.
+Notes, attachments, scheduling, record history, instruction evidence and password sign-in are implemented.
 This is still a test deployment. Provider configuration, agreements, verified privacy information,
 backup/restore validation, current technical standard review, security testing and clinical operating
 procedures remain required before real patient use. App features alone do not certify compliance.
@@ -102,17 +102,17 @@ SMS identity verification and automated invitation delivery are not configured.
   UI autosave tests also cover in-flight edits, failed saves, conflicts and flushing before close.
 
 
-## Evidence, finalization and staff MFA
+## Evidence, finalization and staff authentication
 
 - `/information` is linked from the homepage. Each validated patient invitation also has
   `/information` under its own route, displaying only its practice profile. Fill the profile
   using verified legal and operational information. An admin can edit it; in a practice without
   an admin, a doctor can fill it. No roles or account permissions are changed by this feature.
-- Password sign-in proceeds to `/security`. Staff must enroll/verify a TOTP authenticator
-  before accessing patient data. Server routes require AAL2; restrictive RLS also protects
-  direct authenticated Data API access. Enrollment can read only the verified caller's own
-  staff profile. There is no app recovery bypass; after independently verifying the caller,
-  the account operator can recover a factor in Supabase Auth. Never share an enrollment QR/secret.
+- Staff sign in with email and password and proceed directly to `/dashboard`.
+  The operator has temporarily disabled MFA. Server routes still validate the session,
+  staff role and practice membership; Data API RLS still restricts reads to the own practice.
+  `/security` redirects old bookmarks to the dashboard; no SMS service is enabled.
+  Reassess stronger authentication before patient production use.
 - The patient confirms care on this remote channel and chooses a recording preference.
   These are recorded separately from GDPR legal grounds. Instruction version, exact presented
   text, provider information, selected verification method and server timestamp are preserved.
@@ -127,10 +127,10 @@ SMS identity verification and automated invitation delivery are not configured.
   and retain the earlier snapshot. Finalized exports use the snapshot's original provider,
   identity, author and clinical content even if the practice profile later changes.
 - Read/copy/export requests, attachment downloads, patient acknowledgement, verification,
-  finalization, corrections and MFA login are audited without putting notes, contact data,
-  tokens, video host URLs or authenticator secrets into audit metadata. A copied/exported
+  finalization, corrections and password login are audited without putting notes, contact data,
+  tokens, video host URLs or credentials into audit metadata. A copied/exported
   file still requires controlled handling outside this app. Polling creates read audit events.
-- `npm run test:compliance` runs the full synthetic clinical workflow plus MFA RLS denial,
+- `npm run test:compliance` runs the full synthetic clinical workflow plus password-session practice isolation,
   immutable evidence, finalization requirements and preservation of corrections.
 - The application does not replace a provider's authorized AIS. Import and authorize the
   final record and attachments there. Define retention for working records, source attachments,

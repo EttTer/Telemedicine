@@ -45,6 +45,7 @@ try {
     "consultation_workflow.sql",
     "clinical_workspace.sql",
     "compliance_workflow.sql",
+    "password_only_staff_login.sql",
   ]) {
     const f = ms.find((x) => x.endsWith(suffix));
     assert.ok(f);
@@ -278,8 +279,9 @@ try {
   await db.query("select set_config('request.jwt.claim.sub',$1,false)",[uid(1)]);
   await db.exec("set role authenticated");
   await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({aal:"aal1"})]);
-  eq((await db.query("select count(*)::int n from consultations")).rows[0].n,0);
-  eq((await db.query("select count(*)::int n from patients")).rows[0].n,0);
+  eq((await db.query("select count(*)::int n from consultations")).rows[0].n,2);
+  eq((await db.query("select count(*)::int n from patients")).rows[0].n,1);
+  eq((await db.query("select count(*)::int n from pg_policies where policyname='staff_mfa_required'")).rows[0].n,0);
   await fail(()=>record(1,c,"read"),"permission denied");
   await fail(()=>action("tm_record_action_base",[uid(1),c,"read",{}]),"permission denied");
   await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({aal:"aal2"})]);

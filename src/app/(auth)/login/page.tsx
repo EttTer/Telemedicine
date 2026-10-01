@@ -33,7 +33,19 @@ export default function LoginPage() {
       return
     }
 
-    router.push('/security')
+    try {
+      const audit = await fetch('/api/auth/event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'password_login' }),
+      })
+      if (!audit.ok) throw new Error('audit_failed')
+    } catch {
+      setError('Přihlášení nelze dokončit. Zkuste to znovu.')
+      setIsLoading(false)
+      return
+    }
+    router.push('/dashboard')
     router.refresh()
   }
 
