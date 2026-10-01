@@ -1,11 +1,13 @@
 "use client";
+import { useParams } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import { ClinicalRecord, RecordHandle } from "@/components/ClinicalRecord";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { WherebyRoom } from "@/components/WherebyRoom";
 
-export default function StaffRoom({ params }: { params: { id: string } }) {
+export default function StaffRoom() {
+  const params = useParams<{ id: string }>();
   const recordRef = useRef<RecordHandle>(null);
   const [room, setRoom] = useState("");
   const [error, setError] = useState("");

@@ -7,9 +7,10 @@ import {
   useRef,
   useState,
 } from "react";
+import { formatPrague } from "@/lib/schedule";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
-import { recordText, identityVerified, withIdentityConfirmation } from "@/lib/record-text";
+import { recordText, identityVerified } from "@/lib/record-text";
 export type RecordHandle = { flush: () => Promise<boolean> };
 export const ClinicalRecord = forwardRef<RecordHandle, { id: string }>(
   function ClinicalRecord({ id }, ref) {
@@ -17,7 +18,8 @@ export const ClinicalRecord = forwardRef<RecordHandle, { id: string }>(
       [text, setText] = useState(""),
       [status, setStatus] = useState("Načítám…"),
       [error, setError] = useState(""),
-      [busy, setBusy] = useState(false);
+      [busy, setBusy] = useState(false),
+      [method, setMethod] = useState(""), [reason,setReason]=useState(""), [historical,setHistorical]=useState<any>(null);
     const draft = useRef(""),
       saved = useRef(""),
       revision = useRef(0),
@@ -96,6 +98,7 @@ export const ClinicalRecord = forwardRef<RecordHandle, { id: string }>(
           if (!r.ok) throw new Error(d.error);
           if (!disposed) {
             setRecord(d);
+            if (!initialized.current) setMethod(d.identity?.method || d.consultation.identity_verification_method || "");
             if (
               !initialized.current ||
               (draft.current === saved.current &&
@@ -155,18 +158,21 @@ export const ClinicalRecord = forwardRef<RecordHandle, { id: string }>(
         document.removeEventListener("click", navigate, true);
       };
     }, [id, flush]);
-    async function action(action: string) {
+    async function action(action: string, data: Record<string,unknown> = {}) {
       setBusy(true);
       setError("");
       try {
+        if (!(await flush())) return;
         const r = await fetch(`/api/consultations/${id}/record`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action }),
+          body: JSON.stringify({ action, ...data,
+            ...(["finalize","reopen"].includes(action) ? {revision:revision.current} : {}) }),
         });
         const d = await r.json();
         if (!r.ok) throw new Error(d.error);
-        setRecord((p: any) => ({ ...p, upload_enabled: action === "request" }));
+        if (["request","revoke"].includes(action)) setRecord((p:any)=>({...p,upload_enabled:action==="request"}));
+        else { await reload(); setReason(""); }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Akce se nezdařila.");
       } finally {
@@ -199,7 +205,7 @@ export const ClinicalRecord = forwardRef<RecordHandle, { id: string }>(
       setBusy(true);
       try {
         if (!(await flush())) return;
-        const r = await fetch(`/api/consultations/${id}/record`, {
+        const r = await fetch(`/api/consultations/${id}/record?purpose=copy`, {
           cache: "no-store",
         });
         if (!r.ok) throw new Error("load");
@@ -252,19 +258,16 @@ export const ClinicalRecord = forwardRef<RecordHandle, { id: string }>(
           )}
           {record && (
             <>
-              <label className="flex items-start gap-2">
-                <input
-                  type="checkbox"
-                  className="mt-1"
-                  checked={identityVerified(text)}
-                  disabled={!record.can_edit || busy}
-                  onChange={(e) => updateDraft(withIdentityConfirmation(draft.current, e.target.checked))}
-                />
-                <span>Totožnost pacienta byla ověřena</span>
+              <label className="block">Metoda skutečně provedeného ověření totožnosti
+                <input type="text" value={method} maxLength={200} disabled={!record.can_edit || busy} onChange={e=>setMethod(e.target.value)} className="block border rounded p-2 w-full" placeholder="Např. předem domluvené údaje a kontrolní otázka" />
               </label>
-              <p className="text-sm text-neutral-500">
-                Potvrďte po ověření totožnosti. Údaj se automaticky uloží a zahrne do výsledného zápisu.
-              </p>
+              <label className="flex items-start gap-2">
+                <input type="checkbox" checked={record.identity?.status === "verified"} disabled={!record.can_edit || busy || method.trim().length<5 || !["in_progress","completed"].includes(record.consultation.status)} onChange={e=>void action("verify_identity",{verified:e.target.checked,method:method.trim()})}/>
+                <span>Totožnost pacienta byla ověřena uvedenou metodou</span>
+              </label>
+              {record.identity?.verified_at && <p className="text-sm">Zaznamenal/a {record.identity.verified_by_name} · {formatPrague(record.identity.verified_at)} · {record.identity.method}</p>}
+              {!record.identity && identityVerified(text) && <p className="text-sm">Starší zápis obsahuje textové potvrzení. Čas a autor ověření v něm nejsou evidovány.</p>}
+              <p className="text-sm text-neutral-500">Potvrďte skutečné ověření během nebo po hovoru. Vstupní údaje ani přístupový odkaz samy totožnost neprokazují.</p>
               <label className="block font-medium" htmlFor={`notes-${id}`}>
                 Poznámky a souhrn pro dokumentaci
               </label>
@@ -316,6 +319,14 @@ export const ClinicalRecord = forwardRef<RecordHandle, { id: string }>(
                   </Button>
                 </div>
               )}
+              {record.finalization ? <div className="bg-primary-50 p-3 rounded space-y-2">
+                <p>Dokončený podklad · verze {record.finalization.revision} · {formatPrague(record.finalization.finalized_at)} · {record.finalization.by_name}</p>
+                {record.edit_role && <><label className="block">Důvod opravy<input type="text" className="block w-full border rounded p-2" value={reason} maxLength={1000} onChange={e=>setReason(e.target.value)} /></label><Button disabled={busy||reason.trim().length<3} variant="secondary" onClick={()=>void action("reopen",{reason:reason.trim()})}>Otevřít opravu</Button></>}
+              </div> : record.consultation.status === "completed" && record.can_edit && <Button disabled={busy} onClick={()=>void action("finalize")}>Dokončit podklad pro dokumentaci</Button>}
+              {record.amendment_reason && <p>Důvod aktuální opravy: {record.amendment_reason}</p>}
+              <p className="text-sm text-neutral-500">Dokončení zachová neměnnou verzi. Další oprava bude mít vlastní verzi a důvod. Podklad je potřeba přenést a autorizovat ve vašem systému zdravotnické dokumentace.</p>
+              {!!record.versions?.length && <details><summary>Historie zápisu (posledních 20 verzí)</summary><ul className="space-y-2">{record.versions.map((v:any)=><li key={v.revision}><button type="button" className="underline" disabled={busy} onClick={async()=>{try{const r=await fetch(`/api/consultations/${id}/record?revision=${v.revision}`,{cache:"no-store"});const d=await r.json();if(!r.ok)throw new Error(d.error);setHistorical(d)}catch(e){setError(e instanceof Error?e.message:"Verzi nelze načíst.")}}}>Verze {v.revision} · {formatPrague(v.saved_at)} · {v.author || "Autor neuveden"}</button>{v.source==="baseline"&&<span> · výchozí dochovaný stav</span>}{v.amendment_reason&&<p>Oprava: {v.amendment_reason}</p>}</li>)}</ul></details>}
+              {historical&&<section className="border rounded p-3"><h3 className="font-semibold">Dochovaná verze {historical.revision}</h3><pre className="whitespace-pre-wrap font-sans">{historical.summary}</pre><Button variant="ghost" onClick={()=>setHistorical(null)}>Zavřít náhled verze</Button></section>}
               <h3 className="font-semibold">
                 Přílohy pacienta ({record.documents.length}/10)
               </h3>

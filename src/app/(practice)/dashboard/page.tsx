@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getStaffContext } from "@/lib/staff";
+import { accessLog } from "@/lib/access-log";
 import { createClient } from "@/lib/supabase/server";
 import { RefreshDashboard } from "@/components/RefreshDashboard";
 import { DaySelector } from "@/components/DaySelector";
@@ -7,16 +10,19 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { dayRange, formatPrague, pragueLocal, validDay } from "@/lib/schedule";
 export const revalidate = 0;
 export default async function Dashboard({
-  searchParams,
+  searchParams: pendingSearch,
 }: {
-  searchParams: { day?: string };
+  searchParams: Promise<{ day?: string }>;
 }) {
+  const context=await getStaffContext();
+  if (!context.staff) redirect(context.status===428?"/security":"/login");
+  const searchParams = await pendingSearch;
   const day =
     searchParams.day && validDay(searchParams.day)
       ? searchParams.day
       : pragueLocal().slice(0, 10);
   const [from, to] = dayRange(day),
-    db = createClient();
+    db = await createClient();
   const [planned, live] = await Promise.all([
     db
       .from("consultations")
@@ -35,6 +41,7 @@ export default async function Dashboard({
       .in("status", ["waiting", "in_progress"])
       .order("created_at", { ascending: false }),
   ]);
+  await accessLog(context,"consultation_dashboard_read",undefined,{day,consultations:[...(planned.data||[]),...(live.data||[])].map(c=>c.id)});
   const waiting = live.data?.filter((c) => c.status === "waiting") || [],
     active = live.data?.filter((c) => c.status === "in_progress") || [];
   const name = (c: any) =>

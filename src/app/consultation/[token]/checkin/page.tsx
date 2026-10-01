@@ -1,5 +1,6 @@
 'use client'
 
+import { useParams } from "next/navigation";
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card'
@@ -8,7 +9,8 @@ import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { ArrowRight } from 'lucide-react'
 
-export default function CheckinPage({ params }: { params: { token: string } }) {
+export default function CheckinPage() {
+  const params = useParams<{ token: string }>();
   const router = useRouter()
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)

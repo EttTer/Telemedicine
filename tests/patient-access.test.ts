@@ -21,6 +21,7 @@ describe('patient invitation boundary', () => {
         eq: (key: string, value: any) => { filters[`${table}.${key}`] = value; return query },
         gt: (key: string, value: any) => { filters[`${table}.${key}`] = value; return query },
         in: (key: string, value: any) => { filters[`${table}.${key}`] = value; return query },
+        maybeSingle: async () => ({data:null,error:null}),
         single: async () => ({ data: table === 'consultation_tokens' ? (valid ? { consultation_id: 'consultation-a' } : null) : { id: 'consultation-a' }, error: null }),
       }
       return query
@@ -32,7 +33,7 @@ describe('patient invitation boundary', () => {
     expect(filters['consultation_tokens.is_used']).toBe(false)
     expect(Number.isFinite(Date.parse(filters['consultation_tokens.expires_at']))).toBe(true)
     if (valid) {
-      expect(result).toEqual({ id: 'consultation-a' })
+      expect(result).toEqual({ id: 'consultation-a',profile:{},practitioner:null })
       expect(filters['consultations.id']).toBe('consultation-a')
       expect(filters['consultations.status']).toEqual(['scheduled', 'waiting', 'in_progress'])
     } else {

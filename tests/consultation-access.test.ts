@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+vi.mock('server-only',()=>({}))
 vi.mock('@/lib/staff', () => ({ getStaffContext: vi.fn() }))
 import { getStaffContext } from '@/lib/staff'
 import { GET } from '@/app/api/consultations/[id]/route'
@@ -11,12 +12,12 @@ beforeEach(() => vi.resetAllMocks())
 describe('consultation access boundary', () => {
   it.each([401, 403])('rejects unauthorized context %s', async status => {
     context.mockResolvedValue({ status, staff: null, admin: null } as any)
-    expect((await GET(request, { params: { id } })).status).toBe(status)
+    expect((await GET(request, { params: Promise.resolve({ id }) })).status).toBe(status)
   })
   it('does not fetch a malformed ID', async () => {
     const from = vi.fn()
     context.mockResolvedValue({ status: 200, staff: { practice_id: 'practice-a' }, admin: { from } } as any)
-    expect((await GET(request, { params: { id: 'invalid' } })).status).toBe(400)
+    expect((await GET(request, { params: Promise.resolve({ id: 'invalid' }) })).status).toBe(400)
     expect(from).not.toHaveBeenCalled()
   })
   it.each([
@@ -25,6 +26,7 @@ describe('consultation access boundary', () => {
   ])('returns a consultation from %s with status %s', async (recordPractice, expectedStatus) => {
     const filters: Record<string, string> = {}
     const query: any = {
+      insert: vi.fn(async()=>({error:null})),
       select: vi.fn(() => query),
       eq: vi.fn((key: string, value: string) => { filters[key] = value; return query }),
       single: vi.fn(async () => ({
@@ -33,7 +35,7 @@ describe('consultation access boundary', () => {
       })),
     }
     context.mockResolvedValue({ status: 200, staff: { practice_id: 'practice-a' }, admin: { from: () => query } } as any)
-    const response = await GET(request, { params: { id } })
+    const response = await GET(request, { params: Promise.resolve({ id }) })
     expect(response.status).toBe(expectedStatus)
     expect(filters).toEqual({ id, practice_id: 'practice-a' })
     if (expectedStatus === 200) expect(response.headers.get('cache-control')).toBe('no-store')

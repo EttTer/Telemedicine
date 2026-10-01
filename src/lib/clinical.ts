@@ -25,10 +25,10 @@ export async function staffRecord(id: string, action = "read", data = {}) {
     p_data: data,
   });
   if (result.error) return { response: rpcError(result.error) };
-  return { admin: context.admin, data: result.data };
+  return { admin: context.admin, data: result.data, context };
 }
-export function patientDocuments(token: string) {
-  const secret = getPatientSecret(token);
+export async function patientDocuments(token: string) {
+  const secret = await getPatientSecret(token);
   if (!secretPattern.test(token) || !secret || !secretPattern.test(secret))
     return null;
   const admin = createAdminClient();

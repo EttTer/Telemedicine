@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 import { getStaffContext } from '@/lib/staff'
 import { z } from 'zod'
+import { accessLog } from '@/lib/access-log'
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params: pendingParams }: { params: Promise<{ id: string }> }) {
+  const params = await pendingParams;
   try {
     const context = await getStaffContext()
     if (!context.staff) return NextResponse.json({ error: 'Unauthorized' }, { status: context.status })
@@ -15,6 +17,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
       .eq('practice_id', context.staff.practice_id)
       .single()
     if (error || !consultation) return NextResponse.json({ error: 'Consultation not found' }, { status: 404 })
+    await accessLog(context, "consultation_detail_read", params.id)
     return NextResponse.json(consultation, { headers: { 'Cache-Control': 'no-store' } })
   } catch {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })

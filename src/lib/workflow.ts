@@ -10,8 +10,8 @@ export const hashSecret = (value: string) =>
 export const newSecret = () => randomBytes(32).toString("hex");
 export const patientCookieName = (token: string) =>
   `tm_patient_${hashSecret(token).slice(0, 24)}`;
-export const getPatientSecret = (token: string) =>
-  cookies().get(patientCookieName(token))?.value;
+export const getPatientSecret = async (token: string) =>
+  (await cookies()).get(patientCookieName(token))?.value;
 export const json = (body: unknown, status = 200) =>
   NextResponse.json(body, {
     status,
@@ -40,6 +40,13 @@ export function rpcError(error: { code?: string; message?: string }) {
       403,
     );
   const messages: Record<string, string> = {
+    record_finalized: "Podklad byl dokončen. Pro další změnu nejprve otevřete opravu a uveďte její důvod.",
+    record_incomplete: "Nejprve ukončete konzultaci a doplňte zápis.",
+    identity_required: "Nejprve zaznamenejte skutečně provedené ověření totožnosti.",
+    invalid_identity: "Ověření zaznamenejte během nebo po hovoru a doplňte použitou metodu (5–200 znaků).",
+    provider_incomplete: "Správce musí v Údajích ordinace doplnit název poskytovatele, IČO a adresu.",
+    invalid_amendment: "U dokončeného zápisu uveďte důvod opravy (3–1000 znaků).",
+    instructions_required: "Před vstupem do čekárny potvrďte aktuální poučení.",
     patient_not_waiting:
       "Pacient ještě nevstoupil do čekárny nebo není připojený.",
     room_busy: "Hovor se právě připravuje. Zkuste to za chvíli.",

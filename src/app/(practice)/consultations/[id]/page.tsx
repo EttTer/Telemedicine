@@ -5,6 +5,7 @@ import { CloseConsultation } from "@/components/CloseConsultation";
 import { RescheduleConsultation } from "@/components/RescheduleConsultation";
 import { formatPrague } from "@/lib/schedule";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -15,11 +16,8 @@ const labels: Record<string, string> = {
   completed: "Dokončeno",
   cancelled: "Zrušeno",
 };
-export default function ConsultationDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default function ConsultationDetailPage() {
+  const params = useParams<{id:string}>();
   const recordRef = useRef<RecordHandle>(null);
   const [consultation, setConsultation] = useState<any>(null);
   const [error, setError] = useState("");

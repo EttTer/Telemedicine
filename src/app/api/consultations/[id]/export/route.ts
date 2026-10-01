@@ -2,15 +2,18 @@ import { documentBucket, staffRecord, safeFileName } from "@/lib/clinical";
 import { recordText } from "@/lib/record-text";
 import { zipFiles } from "@/lib/zip";
 import { json } from "@/lib/workflow";
+import { accessLog } from "@/lib/access-log";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } },
+  { params: pendingParams }: { params: Promise<{ id: string }> },
 ) {
+  const params = await pendingParams;
   try {
     const r = await staffRecord(params.id);
     if (r.response) return r.response;
+    await accessLog(r.context!, "record_export_requested", params.id, {format:new URL(request.url).searchParams.get("format") || "zip", revision:r.data.revision});
     const text = recordText(r.data);
     if (new URL(request.url).searchParams.get("format") === "text")
       return new Response(text, {

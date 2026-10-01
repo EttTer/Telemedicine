@@ -42,3 +42,18 @@ Remediation: https://supabase.com/docs/guides/auth/password-security#password-st
 Before live use, configure Whereby Embedded as described in the root README and test a full
 call on two devices, including denying media permissions and retrying failed termination.
 No real Whereby call has been verified by the automated tests.
+
+
+## Compliance workflow — 1 October 2026
+
+Applied `20261001100825_compliance_workflow.sql` to the hosted project. The migration preserves existing data and adds instruction evidence,
+practice disclosure fields, immutable saved versions/final snapshots and audit immutability.
+Existing notes are imported as baseline versions only. It does not fabricate verification or
+consent for old consultations. RPC wrappers remain invoker and service-role-only. MFA is
+required through restrictive authenticated policies on every public table, in addition to
+server-side checks. Existing patient cookie/session flow does not require staff MFA.
+
+The app is still a test deployment. MFA enrollment/recovery, compromised-password protection,
+session limits, actual video settings, backup of database AND Storage, tested restoration,
+retention and operational/legal review require verification with the account operator.
+`npm run test:compliance` exercises the full synthetic clinical flow and new safeguards.

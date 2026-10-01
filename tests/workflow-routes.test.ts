@@ -15,6 +15,7 @@ vi.mock("next/headers", () => ({
 vi.mock("@/lib/supabase/server", () => ({
   createAdminClient: () => ({ rpc: mocks.rpc }),
 }));
+vi.mock("@/lib/patient-access",()=>({getPatientConsultation:async()=>({profile:{legal_name:"Synthetic"},identity_verification_method:"Known method"})}));
 vi.mock("@/lib/staff", () => ({ getStaffContext: mocks.context }));
 vi.mock("@/lib/video", () => ({
   createWherebyMeeting: mocks.createMeeting,
@@ -60,7 +61,7 @@ describe("workflow request boundaries", () => {
             { action: "checkin", data: patientData },
             "https://evil.example",
           ),
-          { params: { token } },
+          { params: Promise.resolve({ token }) },
         )
       ).status,
     ).toBe(403);
@@ -70,14 +71,14 @@ describe("workflow request boundaries", () => {
     expect(
       (
         await patientGet(new Request("https://app.example"), {
-          params: { token },
+          params: Promise.resolve({ token }),
         })
       ).status,
     ).toBe(401);
     expect(
       (
         await patientPost(request({ action: "heartbeat" }), {
-          params: { token },
+          params: Promise.resolve({ token }),
         })
       ).status,
     ).toBe(401);
@@ -103,7 +104,7 @@ describe("workflow request boundaries", () => {
     });
     const response = await patientPost(
       request({ action: "checkin", data: patientData }),
-      { params: { token } },
+      { params: Promise.resolve({ token }) },
     );
     expect(response.status).toBe(200);
     expect(response.headers.get("set-cookie")).toContain("HttpOnly");
@@ -119,20 +120,33 @@ describe("workflow request boundaries", () => {
     mocks.rpc.mockResolvedValue({ data: null, error: { code: "42501" } });
     const response = await patientPost(
       request({ action: "checkin", data: patientData }),
-      { params: { token } },
+      { params: Promise.resolve({ token }) },
     );
     expect(response.status).toBe(403);
     expect(response.headers.get("set-cookie")).toBeNull();
   });
+  it("requires current instructions and care consent before joining",async()=>{
+    mocks.cookie="b".repeat(64);
+    expect((await patientPost(request({action:"join",acknowledged:true}),{params:Promise.resolve({token})})).status).toBe(400);
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+  it("stores the server instruction snapshot rather than patient-controlled text",async()=>{
+    mocks.cookie="b".repeat(64);mocks.rpc.mockResolvedValue({data:{status:"waiting"},error:null});
+    const payload={action:"join",acknowledged:true,care_consent:true,recording_preference:"declined",instruction_version:"2026-10-01-v2"};
+    expect((await patientPost(request({...payload,instruction_snapshot:{fake:true}}),{params:Promise.resolve({token})})).status).toBe(400);
+    expect((await patientPost(request(payload),{params:Promise.resolve({token})})).status).toBe(200);
+    expect(mocks.rpc.mock.calls[0][1].p_data.instruction_snapshot.provider.legal_name).toBe("Synthetic");
+    expect(mocks.rpc.mock.calls[0][1].p_data.instruction_snapshot.instructions.urgent).toContain("155");
+  });
   it("requires authentication before issuing an invitation", async () => {
     mocks.context.mockResolvedValue({ staff: null, status: 401 });
-    expect((await invite(request({}), { params: { id } })).status).toBe(401);
+    expect((await invite(request({}), { params: Promise.resolve({ id }) })).status).toBe(401);
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
   it("uses the verified staff identity and stores only the invitation hash", async () => {
     mocks.rpc.mockResolvedValue({ data: { id }, error: null });
     const response = await invite(request({ p_staff: "attacker" }), {
-      params: { id },
+      params: Promise.resolve({ id }),
     });
     const body = await response.json();
     expect(mocks.rpc.mock.calls[0][1].p_staff).toBe(id);
@@ -142,7 +156,7 @@ describe("workflow request boundaries", () => {
   it("does not contact Whereby after a denied claim", async () => {
     mocks.rpc.mockResolvedValue({ data: null, error: { code: "42501" } });
     expect(
-      (await video(request({ action: "start" }), { params: { id } })).status,
+      (await video(request({ action: "start" }), { params: Promise.resolve({ id }) })).status,
     ).toBe(403);
     expect(mocks.createMeeting).not.toHaveBeenCalled();
   });
@@ -160,7 +174,7 @@ describe("workflow request boundaries", () => {
       hostRoomUrl: "https://test.whereby.com/host",
     });
     const response = await video(request({ action: "start" }), {
-      params: { id },
+      params: Promise.resolve({ id }),
     });
     expect(response.status).toBe(409);
     expect(mocks.deleteMeeting).toHaveBeenCalledWith("one");
@@ -173,7 +187,7 @@ describe("workflow request boundaries", () => {
     });
     mocks.deleteMeeting.mockRejectedValue(new Error("provider unavailable"));
     expect(
-      (await video(request({ action: "end" }), { params: { id } })).status,
+      (await video(request({ action: "end" }), { params: Promise.resolve({ id }) })).status,
     ).toBe(502);
     expect(mocks.rpc).toHaveBeenCalledTimes(1);
   });
@@ -185,7 +199,7 @@ describe("workflow request boundaries", () => {
       })
       .mockResolvedValueOnce({ data: {}, error: null });
     expect(
-      (await video(request({ action: "end" }), { params: { id } })).status,
+      (await video(request({ action: "end" }), { params: Promise.resolve({ id }) })).status,
     ).toBe(200);
     expect(mocks.deleteMeeting).not.toHaveBeenCalled();
     expect(mocks.rpc.mock.calls[1][1].p_action).toBe("end");
@@ -194,7 +208,7 @@ describe("workflow request boundaries", () => {
     vi.stubEnv("WHEREBY_API_KEY", "");
     mocks.rpc.mockResolvedValue({ data: { claimed: true }, error: null });
     expect(
-      (await video(request({ action: "start" }), { params: { id } })).status,
+      (await video(request({ action: "start" }), { params: Promise.resolve({ id }) })).status,
     ).toBe(503);
     expect(mocks.createMeeting).not.toHaveBeenCalled();
     expect(mocks.rpc.mock.calls.at(-1)?.[1].p_action).toBe("release");

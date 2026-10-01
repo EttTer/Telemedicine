@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ClinicalRecord } from "@/components/ClinicalRecord";
-export default function Summary({ params }: { params: { id: string } }) {
+export default async function Summary({ params: pendingParams }: { params: Promise<{ id: string }> }) {
+  const params = await pendingParams;
   return (
     <div className="space-y-6">
       <Link href={`/consultations/${params.id}`} className="underline">

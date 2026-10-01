@@ -1,15 +1,17 @@
 import { getPatientConsultation } from '@/lib/patient-access'
+import Link from 'next/link'
 import { Stethoscope } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
 export default async function PatientLayout({
   children,
-  params,
+  params: pendingParams,
 }: {
   children: React.ReactNode
-  params: { token: string }
+  params: Promise<{ token: string }>
 }) {
+  const params = await pendingParams;
   const consultation = await getPatientConsultation(params.token)
 
   if (!consultation) {
@@ -52,7 +54,7 @@ export default async function PatientLayout({
       </main>
 
       <footer className="py-6 text-center text-xs text-neutral-400">
-        Bezpečná telemedicínská platforma
+        <Link href={`/consultation/${params.token}/information`} className="underline">Informace ordinace a ochrana údajů</Link>
       </footer>
     </div>
   )

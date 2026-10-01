@@ -9,17 +9,18 @@ export async function middleware(request: NextRequest) {
     {
       cookies: {
         getAll: () => request.cookies.getAll(),
-        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[], cacheHeaders) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           response = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options))
+          Object.entries(cacheHeaders || {}).forEach(([key, value]) => response.headers.set(key, value))
         },
       },
     }
   )
   const { data: { user } } = await supabase.auth.getUser()
   const path = request.nextUrl.pathname
-  const protectedPage = ['/dashboard', '/consultations', '/admin'].some(
+  const protectedPage = ['/dashboard', '/consultations', '/admin', '/practice-settings'].some(
     prefix => path === prefix || path.startsWith(`${prefix}/`)
   )
   if (protectedPage && !user) {
@@ -28,6 +29,7 @@ export async function middleware(request: NextRequest) {
     response = redirect
   }
   response.headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive')
+  response.headers.set('Cache-Control', 'private, no-store')
   return response
 }
 

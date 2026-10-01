@@ -1,7 +1,8 @@
 import { getStaffContext } from '@/lib/staff'
 import { hashSecret, json, newSecret, rpcError, sameOrigin } from '@/lib/workflow'
 import { z } from 'zod'
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params: pendingParams }: { params: Promise<{ id: string }> }) {
+  const params = await pendingParams;
   if (!sameOrigin(request)) return json({ error: 'Nepovolený původ požadavku.' }, 403)
   if (!z.string().uuid().safeParse(params.id).success) return json({ error: 'Neplatné ID.' }, 400)
   try {

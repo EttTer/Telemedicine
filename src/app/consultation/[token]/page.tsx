@@ -6,8 +6,9 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Button } from '@/components/ui/Button'
 import { Video, ShieldCheck } from 'lucide-react'
 
-export default async function ConsultationEntryPage({ params }: { params: { token: string } }) {
-  const secret = getPatientSecret(params.token)
+export default async function ConsultationEntryPage({ params: pendingParams }: { params: Promise<{ token: string }> }) {
+  const params = await pendingParams;
+  const secret = await getPatientSecret(params.token)
   if (secret) {
     const { data, error } = await createAdminClient().rpc('tm_patient_action', { p_token_hash: hashSecret(params.token), p_session_hash: hashSecret(secret), p_action: 'status' })
     if (!error && data) redirect(`/consultation/${params.token}/${data.acknowledged || ['completed','cancelled'].includes(data.status) ? 'waiting' : 'instructions'}`)

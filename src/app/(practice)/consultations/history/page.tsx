@@ -1,20 +1,26 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getStaffContext } from "@/lib/staff";
+import { accessLog } from "@/lib/access-log";
 import { createClient } from "@/lib/supabase/server";
 import { DaySelector } from "@/components/DaySelector";
 import { dayRange, formatPrague, validDay } from "@/lib/schedule";
 export const revalidate = 0;
 export default async function History({
-  searchParams,
+  searchParams: pendingSearch,
 }: {
-  searchParams: { day?: string; page?: string };
+  searchParams: Promise<{ day?: string; page?: string }>;
 }) {
+  const context=await getStaffContext();
+  if (!context.staff) redirect(context.status===428?"/security":"/login");
+  const searchParams = await pendingSearch;
   const day =
     searchParams.day && validDay(searchParams.day) ? searchParams.day : "";
   const page = Math.max(
     0,
     Math.min(10000, parseInt(searchParams.page || "0", 10) || 0),
   );
-  const db = createClient();
+  const db = await createClient();
   let q = db
     .from("consultations")
     .select(
@@ -30,6 +36,7 @@ export default async function History({
     .order("scheduled_for", { ascending: false })
     .order("created_at", { ascending: false })
     .range(page * 20, page * 20 + 19);
+  await accessLog(context,"consultation_history_read",undefined,{day,page,consultations:(data||[]).map(c=>c.id)});
   const url = (n: number) =>
     `/consultations/history?page=${n}${day ? "&day=" + day : ""}`;
   return (

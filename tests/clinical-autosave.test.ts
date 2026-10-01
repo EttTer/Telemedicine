@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ClinicalRecord, type RecordHandle } from "@/components/ClinicalRecord";
 const id = "11111111-1111-4111-8111-111111111111";
 let renderer: ReactTestRenderer, ref: React.RefObject<RecordHandle>;
-let remote = {
+let remote: any = {
   consultation: { status: "in_progress" },
   can_edit: true,
   summary: "Saved before call",
@@ -48,12 +48,13 @@ beforeEach(() => {
     }),
   );
   vi.stubGlobal("document", new EventTarget());
-  remote = { ...remote, summary: "Saved before call", revision: 1 };
+  remote = { ...remote, summary: "Saved before call", revision: 1, identity:null, consultation:{status:"in_progress",identity_verification_method:"Domluvená kontrolní otázka"} };
   fetchMock.mockReset();
   fetchMock.mockImplementation(async (_url, opts) => {
     if (opts?.method === "POST") {
       const p = JSON.parse(opts.body);
-      remote = { ...remote, summary: p.summary, revision: remote.revision + 1 };
+      if (p.action === "verify_identity") remote = {...remote,identity:{status:p.verified?"verified":"rejected",method:p.method}};
+      else remote = { ...remote, summary: p.summary, revision: remote.revision + 1 };
       return response({ revision: remote.revision });
     }
     return response(remote);
@@ -65,17 +66,19 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 describe("critical notes during consultation", () => {
-  it("persists explicit identity confirmation with existing notes and can remove it", async () => {
+  it("stores structured identity evidence without changing clinical notes", async () => {
     await mount();
-    expect(renderer.root.findByType("input").props.checked).toBe(false);
+    expect(renderer.root.findByProps({type:"checkbox"}).props.checked).toBe(false);
     await act(async () => {
-      renderer.root.findByType("input").props.onChange({ target: { checked: true } });
+      renderer.root.findByProps({type:"checkbox"}).props.onChange({ target: { checked: true } });
       await vi.advanceTimersByTimeAsync(800);
     });
-    expect(remote.summary).toBe("Saved before call\nTotožnost pacienta byla ověřena.");
-    expect(renderer.root.findByType("input").props.checked).toBe(true);
+    expect(remote.summary).toBe("Saved before call");
+    expect(remote.identity).toEqual({status:"verified",method:"Domluvená kontrolní otázka"});
+    expect(saves()[0]).toEqual({action:"verify_identity",verified:true,method:"Domluvená kontrolní otázka"});
+    expect(renderer.root.findByProps({type:"checkbox"}).props.checked).toBe(true);
     await act(async () => {
-      renderer.root.findByType("input").props.onChange({ target: { checked: false } });
+      renderer.root.findByProps({type:"checkbox"}).props.onChange({ target: { checked: false } });
       await ref.current!.flush();
     });
     expect(remote.summary).toBe("Saved before call");

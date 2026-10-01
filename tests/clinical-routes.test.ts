@@ -62,13 +62,13 @@ describe("clinical API authorization and uploads", () => {
   it("rejects unauthenticated staff and malformed IDs before RPC", async () => {
     m.context.mockResolvedValue({ staff: null, status: 401 });
     expect(
-      (await readRecord(new Request("https://app.example"), { params: { id } }))
+      (await readRecord(new Request("https://app.example"), { params: Promise.resolve({ id }) }))
         .status,
     ).toBe(401);
     expect(
       (
         await readRecord(new Request("https://app.example"), {
-          params: { id: "bad" },
+          params: Promise.resolve({ id: "bad" }),
         })
       ).status,
     ).toBe(400);
@@ -84,7 +84,7 @@ describe("clinical API authorization and uploads", () => {
       error: null,
     });
     const r = await readRecord(new Request("https://app.example"), {
-      params: { id },
+      params: Promise.resolve({ id }),
     });
     expect(r.headers.get("cache-control")).toBe("no-store");
     expect(m.rpc.mock.calls[0][1].p_staff).toBe(id);
@@ -98,7 +98,7 @@ describe("clinical API authorization and uploads", () => {
             { action: "save", summary: "x", revision: 0 },
             "https://evil.example",
           ),
-          { params: { id } },
+          { params: Promise.resolve({ id }) },
         )
       ).status,
     ).toBe(403);
@@ -106,7 +106,7 @@ describe("clinical API authorization and uploads", () => {
       (
         await recordPost(
           req({ action: "save", summary: "x", revision: 0, p_staff: "evil" }),
-          { params: { id } },
+          { params: Promise.resolve({ id }) },
         )
       ).status,
     ).toBe(400);
@@ -114,7 +114,7 @@ describe("clinical API authorization and uploads", () => {
     expect(
       (
         await recordPost(req({ action: "save", summary: "x", revision: 0 }), {
-          params: { id },
+          params: Promise.resolve({ id }),
         })
       ).status,
     ).toBe(409);
@@ -127,7 +127,7 @@ describe("clinical API authorization and uploads", () => {
     expect(
       (
         await download(new Request("https://app.example"), {
-          params: { id, documentId: "foreign" },
+          params: Promise.resolve({ id, documentId: "foreign" }),
         })
       ).status,
     ).toBe(404);
@@ -136,12 +136,12 @@ describe("clinical API authorization and uploads", () => {
   it("requires patient session and active request before storage access", async () => {
     m.cookie = "";
     expect(
-      (await upload(multipart("%PDF-1.4"), { params: { token } })).status,
+      (await upload(multipart("%PDF-1.4"), { params: Promise.resolve({ token }) })).status,
     ).toBe(401);
     m.cookie = "b".repeat(64);
     m.rpc.mockResolvedValue({ error: { message: "upload_disabled" } });
     expect(
-      (await upload(multipart("%PDF-1.4"), { params: { token } })).status,
+      (await upload(multipart("%PDF-1.4"), { params: Promise.resolve({ token }) })).status,
     ).toBe(409);
     expect(m.upload).not.toHaveBeenCalled();
   });
@@ -151,12 +151,12 @@ describe("clinical API authorization and uploads", () => {
       error: null,
     });
     expect(
-      (await upload(multipart("<html>"), { params: { token } })).status,
+      (await upload(multipart("<html>"), { params: Promise.resolve({ token }) })).status,
     ).toBe(400);
     expect(
       (
         await upload(multipart("", "application/pdf", 3145729), {
-          params: { token },
+          params: Promise.resolve({ token }),
         })
       ).status,
     ).toBe(400);
@@ -169,7 +169,7 @@ describe("clinical API authorization and uploads", () => {
         : { data: { id: "doc" }, error: null },
     );
     expect(
-      (await upload(multipart("%PDF-1.4"), { params: { token } })).status,
+      (await upload(multipart("%PDF-1.4"), { params: Promise.resolve({ token }) })).status,
     ).toBe(200);
     expect(m.rpc.mock.calls[1][1].p_data.storage_path).toMatch(
       new RegExp("^" + id + "/"),
@@ -184,7 +184,7 @@ describe("clinical API authorization and uploads", () => {
         : { error: { message: "upload_disabled" } },
     );
     expect(
-      (await upload(multipart("%PDF-1.4"), { params: { token } })).status,
+      (await upload(multipart("%PDF-1.4"), { params: Promise.resolve({ token }) })).status,
     ).toBe(409);
     expect(m.remove).toHaveBeenCalledWith([m.upload.mock.calls[0][0]]);
   });

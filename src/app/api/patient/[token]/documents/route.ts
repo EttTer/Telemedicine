@@ -9,10 +9,11 @@ import { json, rpcError, sameOrigin } from "@/lib/workflow";
 export const dynamic = "force-dynamic";
 export async function GET(
   _request: Request,
-  { params }: { params: { token: string } },
+  { params: pendingParams }: { params: Promise<{ token: string }> },
 ) {
+  const params = await pendingParams;
   try {
-    const c = patientDocuments(params.token);
+    const c = await patientDocuments(params.token);
     if (!c) return json({ error: "Otevřete platnou pozvánku." }, 401);
     const r = await c.rpc("status");
     return r.error ? rpcError(r.error) : json(r.data);
@@ -22,12 +23,13 @@ export async function GET(
 }
 export async function POST(
   request: Request,
-  { params }: { params: { token: string } },
+  { params: pendingParams }: { params: Promise<{ token: string }> },
 ) {
+  const params = await pendingParams;
   if (!sameOrigin(request))
     return json({ error: "Nepovolený původ požadavku." }, 403);
   let path: string | undefined;
-  const c = patientDocuments(params.token);
+  const c = await patientDocuments(params.token);
   if (!c) return json({ error: "Otevřete platnou pozvánku." }, 401);
   try {
     // Netlify synchronous request body limit: keep multipart below 4 MB.

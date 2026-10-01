@@ -1,0 +1,7 @@
+import { z } from "zod";
+import { getStaffContext } from "@/lib/staff";
+import { json, sameOrigin, rpcError } from "@/lib/workflow";
+export const dynamic="force-dynamic";
+const input=z.object({ legal_name:z.string().trim().max(300),ico:z.string().regex(/^(\d{8})?$/),address:z.string().trim().max(1000),privacy_contact:z.string().trim().max(1000),practitioner_identity_method:z.string().trim().max(1000),legal_basis_notice:z.string().trim().max(3000),vendor_notice:z.string().trim().max(3000),retention_notice:z.string().trim().max(3000) }).strict();
+export async function GET() { try { const c=await getStaffContext(); if(!c.staff)return json({error:"Ověřte přihlášení."},c.status); const r=await c.admin.rpc("tm_practice_action",{p_staff:c.staff.id}); return r.error?rpcError(r.error):json(r.data); }catch{return json({error:"Profil nelze načíst."},500);} }
+export async function POST(request:Request) { if(!sameOrigin(request))return json({error:"Nepovolený původ."},403); try { const c=await getStaffContext(); if(!c.staff)return json({error:"Ověřte přihlášení."},c.status); const p=input.safeParse(await request.json().catch(()=>null)); if(!p.success)return json({error:"Zkontrolujte údaje; IČO musí mít osm číslic nebo zůstat prázdné."},400); const r=await c.admin.rpc("tm_practice_action",{p_staff:c.staff.id,p_data:p.data}); return r.error?rpcError(r.error):json(r.data); }catch{return json({error:"Profil nelze uložit."},500);} }

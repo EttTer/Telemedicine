@@ -1,34 +1,40 @@
 import { createAdminClient } from '@/lib/supabase/server'
 import { getPatientSecret, hashSecret, json, newSecret, patientCookieName, patientInput, rpcError, sameOrigin, secretPattern } from '@/lib/workflow'
 import { z } from 'zod'
+import { instructionVersion, instructions } from '@/lib/instructions'
+import { getPatientConsultation } from '@/lib/patient-access'
 export const dynamic = 'force-dynamic'
-export async function GET(request: Request, { params }: { params: { token: string } }) {
-  const secret = getPatientSecret(params.token)
+export async function GET(request: Request, { params: pendingParams }: { params: Promise<{ token: string }> }) {
+  const params = await pendingParams;
+  const secret = await getPatientSecret(params.token)
   if (!secretPattern.test(params.token) || !secret || !secretPattern.test(secret)) return json({ error: 'Nejprve vyplňte vstupní údaje.' }, 401)
   try {
-    const { data, error } = await createAdminClient().rpc('tm_patient_action', {
+      const { data, error } = await createAdminClient().rpc('tm_patient_action', {
       p_token_hash: hashSecret(params.token), p_session_hash: hashSecret(secret), p_action: 'status',
     })
     return error ? rpcError(error) : json(data)
   } catch { return json({ error: 'Stav konzultace se nepodařilo načíst.' }, 500) }
 }
-export async function POST(request: Request, { params }: { params: { token: string } }) {
+export async function POST(request: Request, { params: pendingParams }: { params: Promise<{ token: string }> }) {
+  const params = await pendingParams;
   if (!sameOrigin(request)) return json({ error: 'Nepovolený původ požadavku.' }, 403)
   if (!secretPattern.test(params.token)) return json({ error: 'Neplatná pozvánka.' }, 403)
   try {
     const body = await request.json().catch(() => null)
     const parsed = z.discriminatedUnion('action', [
       z.object({ action: z.literal('checkin'), data: patientInput }).strict(),
-      z.object({ action: z.literal('join'), acknowledged: z.literal(true) }).strict(),
+      z.object({ action: z.literal('join'), acknowledged: z.literal(true), care_consent:z.literal(true), recording_preference:z.enum(['declined','not_requested']), instruction_version:z.literal(instructionVersion) }).strict(),
       z.object({ action: z.literal('heartbeat') }).strict(),
     ]).safeParse(body)
     if (!parsed.success) return json({ error: 'Zkontrolujte vyplněné údaje a datum narození.' }, 400)
-    const existing = getPatientSecret(params.token)
+    const existing = await getPatientSecret(params.token)
     if (parsed.data.action !== 'checkin' && (!existing || !secretPattern.test(existing))) return json({ error: 'Nejprve vyplňte vstupní údaje.' }, 401)
     const secret = existing && secretPattern.test(existing) ? existing : newSecret()
+    const context = parsed.data.action === 'join' ? await getPatientConsultation(params.token) : null
+    if (parsed.data.action === 'join' && !context) return json({error:'Pozvánka nebo přístup vypršel.'},403)
     const { data, error } = await createAdminClient().rpc('tm_patient_action', {
       p_token_hash: hashSecret(params.token), p_session_hash: hashSecret(secret), p_action: parsed.data.action,
-      p_data: parsed.data.action === 'checkin' ? parsed.data.data : parsed.data.action === 'join' ? { acknowledged: true } : {},
+      p_data: parsed.data.action === 'checkin' ? parsed.data.data : parsed.data.action === 'join' ? { acknowledged: true, care_consent:true, recording_preference:parsed.data.recording_preference, instruction_version:instructionVersion, instruction_snapshot:{instructions,provider:context?.profile,practitioner:context?.practitioner,patient_identity_method:context?.identity_verification_method} } : {},
     })
     if (error) return rpcError(error)
     const response = json(data)

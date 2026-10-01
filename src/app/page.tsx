@@ -12,7 +12,7 @@ export default function Home() {
         </div>
 
         <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-neutral-900">
-          Bezpečná telemedicínská čekárna
+          Telemedicínská čekárna
         </h1>
 
         <p className="text-xl text-neutral-600 max-w-2xl mx-auto">
@@ -22,10 +22,10 @@ export default function Home() {
         <div className="grid sm:grid-cols-3 gap-6 pt-8 max-w-4xl mx-auto text-left">
           <div className="card p-6 border-t-4 border-t-primary-500">
             <Shield className="h-8 w-8 text-primary-500 mb-4" />
-            <h3 className="font-semibold text-lg mb-2">Šifrovaná komunikace</h3>
+            <h3 className="font-semibold text-lg mb-2">Videokonzultace</h3>
             <p className="text-sm text-neutral-600">
-              Videohovory prostřednictvím Whereby. Aplikace nepořizuje záznam
-              hovoru.
+              Videohovory prostřednictvím Whereby. Konzultace jsou určeny
+              k provedení bez audio/videozáznamu.
             </p>
           </div>
 
@@ -53,9 +53,9 @@ export default function Home() {
           <Link href="/login" className="btn btn-primary px-8 py-3 text-lg">
             Přihlášení pro ordinace
           </Link>
-          <a href="#about" className="btn btn-secondary px-8 py-3 text-lg">
+          <Link href="/information" className="btn btn-secondary px-8 py-3 text-lg">
             Více informací
-          </a>
+          </Link>
         </div>
       </div>
     </main>

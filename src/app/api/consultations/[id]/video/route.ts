@@ -6,8 +6,9 @@ import { json, rpcError, sameOrigin } from "@/lib/workflow";
 export const dynamic = "force-dynamic";
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } },
+  { params: pendingParams }: { params: Promise<{ id: string }> },
 ) {
+  const params = await pendingParams;
   if (!z.string().uuid().safeParse(params.id).success)
     return json({ error: "Neplatné ID." }, 400);
   try {
@@ -28,8 +29,9 @@ export async function GET(
 }
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } },
+  { params: pendingParams }: { params: Promise<{ id: string }> },
 ) {
+  const params = await pendingParams;
   if (!sameOrigin(request))
     return json({ error: "Nepovolený původ požadavku." }, 403);
   if (!z.string().uuid().safeParse(params.id).success)

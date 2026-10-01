@@ -10,9 +10,10 @@ one-time invitation exchange for an HttpOnly patient session, replacement invita
 saved patient intake and instruction acknowledgement, polling waiting room, Whereby
 room creation/admission and explicit termination. The guest never receives the host URL.
 
-Not ready for real patient use. Document upload and clinical summaries are unfinished.
-Dependency security upgrades (including Next.js), provider configuration, full two-device
-video acceptance testing and operational/privacy review remain required.
+Notes, attachments, scheduling, record history, instruction evidence and staff MFA are implemented.
+This is still a test deployment. Provider configuration, agreements, verified privacy information,
+backup/restore validation, current technical standard review, security testing and clinical operating
+procedures remain required before real patient use. App features alone do not certify compliance.
 
 ## Configuration
 
@@ -99,3 +100,50 @@ SMS identity verification and automated invitation delivery are not configured.
 - `npm run test:clinical` exercises record revisions, persistence after ending, upload grants,
   cross-practice isolation, file limits, scheduling and closing legacy calls in disposable PGlite.
   UI autosave tests also cover in-flight edits, failed saves, conflicts and flushing before close.
+
+
+## Evidence, finalization and staff MFA
+
+- `/information` is linked from the homepage. Each validated patient invitation also has
+  `/information` under its own route, displaying only its practice profile. Fill the profile
+  using verified legal and operational information. An admin can edit it; in a practice without
+  an admin, a doctor can fill it. No roles or account permissions are changed by this feature.
+- Password sign-in proceeds to `/security`. Staff must enroll/verify a TOTP authenticator
+  before accessing patient data. Server routes require AAL2; restrictive RLS also protects
+  direct authenticated Data API access. Enrollment can read only the verified caller's own
+  staff profile. There is no app recovery bypass; after independently verifying the caller,
+  the account operator can recover a factor in Supabase Auth. Never share an enrollment QR/secret.
+- The patient confirms care on this remote channel and chooses a recording preference.
+  These are recorded separately from GDPR legal grounds. Instruction version, exact presented
+  text, provider information, selected verification method and server timestamp are preserved.
+  The app does not offer recording/transcription. Provider recording settings still require review.
+- Identity confirmation records method, actual actor and server time separately from free-text
+  notes. Older text markers are explicitly labeled as legacy; migration does not fabricate
+  who verified identity or when.
+- Every saved note revision is preserved from this migration onward. Existing notes are
+  retained as the current baseline only; earlier history cannot be reconstructed.
+- Completed calls with nonempty notes, confirmed identity and basic provider identification
+  can finalize an immutable snapshot. Edits afterward require a reason, create a new revision
+  and retain the earlier snapshot. Finalized exports use the snapshot's original provider,
+  identity, author and clinical content even if the practice profile later changes.
+- Read/copy/export requests, attachment downloads, patient acknowledgement, verification,
+  finalization, corrections and MFA login are audited without putting notes, contact data,
+  tokens, video host URLs or authenticator secrets into audit metadata. A copied/exported
+  file still requires controlled handling outside this app. Polling creates read audit events.
+- `npm run test:compliance` runs the full synthetic clinical workflow plus MFA RLS denial,
+  immutable evidence, finalization requirements and preservation of corrections.
+- The application does not replace a provider's authorized AIS. Import and authorize the
+  final record and attachments there. Define retention for working records, source attachments,
+  current exports and access logs separately. No automatic deletion or retention promises have
+  been configured. Never delete clinical evidence through ad hoc SQL.
+
+## Remaining operational work
+
+Before real patient use, the operator must supply verified practice/physician contact information,
+GDPR notices and purposes/legal bases, processor agreements and any transfer safeguards, a
+retention/archiving policy, daily database and attachment backup with tested restore, secure
+staff devices and recovery procedure, incident procedures, current-standard validation and
+independent security/penetration testing. Confirm actual Whereby encryption/recording settings
+and deployment TLS settings; code review cannot confirm those remote settings. Determine any
+applicable cybersecurity-law duties and healthcare permissions with the provider. Do not claim
+that these app changes alone establish legal compliance.
