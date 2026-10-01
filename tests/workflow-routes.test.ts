@@ -15,7 +15,7 @@ vi.mock("next/headers", () => ({
 vi.mock("@/lib/supabase/server", () => ({
   createAdminClient: () => ({ rpc: mocks.rpc }),
 }));
-vi.mock("@/lib/patient-access",()=>({getPatientConsultation:async()=>({profile:{legal_name:"Synthetic"},identity_verification_method:"Known method"})}));
+vi.mock("@/lib/patient-access",()=>({getPatientConsultation:async()=>({instructionHash:"c".repeat(64),profile:{legal_name:"Synthetic"},identity_verification_method:"Known method"})}));
 vi.mock("@/lib/staff", () => ({ getStaffContext: mocks.context }));
 vi.mock("@/lib/video", () => ({
   createWherebyMeeting: mocks.createMeeting,
@@ -132,8 +132,10 @@ describe("workflow request boundaries", () => {
   });
   it("stores the server instruction snapshot rather than patient-controlled text",async()=>{
     mocks.cookie="b".repeat(64);mocks.rpc.mockResolvedValue({data:{status:"waiting"},error:null});
-    const payload={action:"join",acknowledged:true,care_consent:true,recording_preference:"declined",instruction_version:"2026-10-01-v2"};
+    const payload={action:"join",acknowledged:true,care_consent:true,recording_preference:"declined",instruction_version:"2026-10-01-v2",instruction_hash:"c".repeat(64)};
     expect((await patientPost(request({...payload,instruction_snapshot:{fake:true}}),{params:Promise.resolve({token})})).status).toBe(400);
+    expect((await patientPost(request({...payload,instruction_hash:"d".repeat(64)}),{params:Promise.resolve({token})})).status).toBe(409);
+    expect(mocks.rpc).not.toHaveBeenCalled();
     expect((await patientPost(request(payload),{params:Promise.resolve({token})})).status).toBe(200);
     expect(mocks.rpc.mock.calls[0][1].p_data.instruction_snapshot.provider.legal_name).toBe("Synthetic");
     expect(mocks.rpc.mock.calls[0][1].p_data.instruction_snapshot.instructions.urgent).toContain("155");

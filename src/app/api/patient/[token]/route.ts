@@ -23,7 +23,7 @@ export async function POST(request: Request, { params: pendingParams }: { params
     const body = await request.json().catch(() => null)
     const parsed = z.discriminatedUnion('action', [
       z.object({ action: z.literal('checkin'), data: patientInput }).strict(),
-      z.object({ action: z.literal('join'), acknowledged: z.literal(true), care_consent:z.literal(true), recording_preference:z.enum(['declined','not_requested']), instruction_version:z.literal(instructionVersion) }).strict(),
+      z.object({ action: z.literal('join'), acknowledged: z.literal(true), care_consent:z.literal(true), recording_preference:z.enum(['declined','not_requested']), instruction_version:z.literal(instructionVersion), instruction_hash:z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
       z.object({ action: z.literal('heartbeat') }).strict(),
     ]).safeParse(body)
     if (!parsed.success) return json({ error: 'Zkontrolujte vyplněné údaje a datum narození.' }, 400)
@@ -32,6 +32,7 @@ export async function POST(request: Request, { params: pendingParams }: { params
     const secret = existing && secretPattern.test(existing) ? existing : newSecret()
     const context = parsed.data.action === 'join' ? await getPatientConsultation(params.token) : null
     if (parsed.data.action === 'join' && !context) return json({error:'Pozvánka nebo přístup vypršel.'},403)
+    if (parsed.data.action === 'join' && context?.instructionHash !== parsed.data.instruction_hash) return json({error:'Informace ordinace se změnily. Přečtěte aktuální poučení a potvrďte je znovu.'},409)
     const { data, error } = await createAdminClient().rpc('tm_patient_action', {
       p_token_hash: hashSecret(params.token), p_session_hash: hashSecret(secret), p_action: parsed.data.action,
       p_data: parsed.data.action === 'checkin' ? parsed.data.data : parsed.data.action === 'join' ? { acknowledged: true, care_consent:true, recording_preference:parsed.data.recording_preference, instruction_version:instructionVersion, instruction_snapshot:{instructions,provider:context?.profile,practitioner:context?.practitioner,patient_identity_method:context?.identity_verification_method} } : {},

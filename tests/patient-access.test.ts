@@ -33,7 +33,7 @@ describe('patient invitation boundary', () => {
     expect(filters['consultation_tokens.is_used']).toBe(false)
     expect(Number.isFinite(Date.parse(filters['consultation_tokens.expires_at']))).toBe(true)
     if (valid) {
-      expect(result).toEqual({ id: 'consultation-a',profile:{},practitioner:null })
+      expect(result).toEqual({ id: 'consultation-a',profile:{},practitioner:null,instructionHash:expect.stringMatching(/^[a-f0-9]{64}$/) })
       expect(filters['consultations.id']).toBe('consultation-a')
       expect(filters['consultations.status']).toEqual(['scheduled', 'waiting', 'in_progress'])
     } else {

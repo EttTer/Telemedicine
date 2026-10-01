@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 export function PatientInstructions({token,context}: {token:string;context:any}) {
  const router=useRouter();const [agreed,setAgreed]=useState(false),[choice,setChoice]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState('');
  async function submit(e:React.FormEvent){e.preventDefault();if(!agreed||!choice)return;setBusy(true);setError('');try{
- const r=await fetch(`/api/patient/${token}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'join',acknowledged:true,care_consent:true,recording_preference:choice,instruction_version:instructionVersion})});const d=await r.json();if(!r.ok)throw new Error(d.error);router.push(`/consultation/${token}/waiting`);
+ const r=await fetch(`/api/patient/${token}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'join',acknowledged:true,care_consent:true,recording_preference:choice,instruction_version:instructionVersion,instruction_hash:context.instructionHash})});const d=await r.json();if(!r.ok){if(r.status===409){setAgreed(false);setChoice('');router.refresh()}throw new Error(d.error)}router.push(`/consultation/${token}/waiting`);
  }catch(e){setError(e instanceof Error?e.message:'Vstup se nezdařil.')}finally{setBusy(false)}}
  return <form onSubmit={submit} className="max-w-2xl mx-auto p-6 space-y-5 bg-white rounded-xl">
  <h1 className="text-2xl font-semibold">Poučení před konzultací</h1>

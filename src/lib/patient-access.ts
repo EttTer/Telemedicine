@@ -1,4 +1,5 @@
 import 'server-only'
+import { instructions } from '@/lib/instructions'
 import { createHash } from 'node:crypto'
 import { getPatientSecret, hashSecret, secretPattern } from '@/lib/workflow'
 import { createAdminClient } from '@/lib/supabase/server'
@@ -35,6 +36,7 @@ export async function getPatientConsultation(token: string) {
     const { data: profile } = await admin.from('practice_compliance').select('legal_name,ico,address,privacy_contact,retention_notice,legal_basis_notice,vendor_notice,practitioner_identity_method').eq('practice_id',c.practice_id).maybeSingle()
     const practitioner = c.doctor_id ? (await admin.from('staff').select('title_before,first_name,last_name,title_after').eq('id',c.doctor_id).eq('practice_id',c.practice_id).maybeSingle()).data : null
     const { practice_id, doctor_id, ...publicContext } = c
-    return {...publicContext, profile:profile || {}, practitioner}
+    const instructionHash=createHash('sha256').update(JSON.stringify({instructions,provider:profile||{},practitioner,patient_identity_method:c.identity_verification_method})).digest('hex')
+    return {...publicContext, profile:profile || {}, practitioner, instructionHash}
   }
 }
