@@ -1,12 +1,19 @@
-import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { NextResponse } from "next/server";
+import { sameOrigin } from "@/lib/workflow";
+import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
-  const origin = new URL(request.url).origin
-  if (request.headers.get('origin') !== origin) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!sameOrigin(request)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
-  const { error } = await createClient().auth.signOut()
-  if (error) return NextResponse.json({ error: 'Odhlášení se nezdařilo.' }, { status: 500 })
-  return NextResponse.redirect(new URL('/login', request.url), 303)
+  const { error } = await createClient().auth.signOut();
+  if (error)
+    return NextResponse.json(
+      { error: "Odhlášení se nezdařilo." },
+      { status: 500 },
+    );
+  return NextResponse.redirect(
+    new URL("/login", process.env.APP_ORIGIN || request.url),
+    303,
+  );
 }

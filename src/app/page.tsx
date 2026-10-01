@@ -1,5 +1,5 @@
-import Link from 'next/link'
-import { Stethoscope, Shield, Video } from 'lucide-react'
+import Link from "next/link";
+import { Stethoscope, Shield, Video } from "lucide-react";
 
 export default function Home() {
   return (
@@ -10,11 +10,11 @@ export default function Home() {
             <Stethoscope className="h-10 w-10 text-primary-600" />
           </div>
         </div>
-        
+
         <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-neutral-900">
           Bezpečná telemedicínská čekárna
         </h1>
-        
+
         <p className="text-xl text-neutral-600 max-w-2xl mx-auto">
           Testovací platforma pro online konzultace mezi lékařem a pacientem.
         </p>
@@ -24,42 +24,40 @@ export default function Home() {
             <Shield className="h-8 w-8 text-primary-500 mb-4" />
             <h3 className="font-semibold text-lg mb-2">Šifrovaná komunikace</h3>
             <p className="text-sm text-neutral-600">
-              Videohovory prostřednictvím Whereby. Aplikace nepořizuje záznam hovoru.
+              Videohovory prostřednictvím Whereby. Aplikace nepořizuje záznam
+              hovoru.
             </p>
           </div>
-          
+
           <div className="card p-6 border-t-4 border-t-accent-500">
             <Video className="h-8 w-8 text-accent-500 mb-4" />
             <h3 className="font-semibold text-lg mb-2">Virtuální čekárna</h3>
             <p className="text-sm text-neutral-600">
-              Pacient čeká v klidném prostředí do chvíle, než jej lékař vyzve k hovoru.
+              Pacient čeká v klidném prostředí do chvíle, než jej lékař vyzve k
+              hovoru.
             </p>
           </div>
-          
+
           <div className="card p-6 border-t-4 border-t-primary-500">
             <Stethoscope className="h-8 w-8 text-primary-500 mb-4" />
-            <h3 className="font-semibold text-lg mb-2">Řízené nahrávání souborů</h3>
+            <h3 className="font-semibold text-lg mb-2">
+              Řízené nahrávání souborů
+            </h3>
             <p className="text-sm text-neutral-600">
-              Předávání dokumentů na žádost ordinace připravujeme.
+              Pacient může na žádost ordinace přiložit dokumenty již v čekárně.
             </p>
           </div>
         </div>
 
         <div className="pt-10 flex gap-4 justify-center">
-          <Link 
-            href="/login" 
-            className="btn btn-primary px-8 py-3 text-lg"
-          >
+          <Link href="/login" className="btn btn-primary px-8 py-3 text-lg">
             Přihlášení pro ordinace
           </Link>
-          <a 
-            href="#about" 
-            className="btn btn-secondary px-8 py-3 text-lg"
-          >
+          <a href="#about" className="btn btn-secondary px-8 py-3 text-lg">
             Více informací
           </a>
         </div>
       </div>
     </main>
-  )
+  );
 }

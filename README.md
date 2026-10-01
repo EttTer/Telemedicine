@@ -68,3 +68,35 @@ room until the provider expiry/cleanup, and there is no background reconciliatio
 The 2-hour room expiry is a provider expiry, not a precise automatic consultation timeout.
 Summary editing, uploads, SMS identity verification, automated invitations and history views
 are not part of this checkpoint.
+
+
+## Scheduling, records and attachments
+
+- New consultations require a date and time in Europe/Prague. The dashboard shows one
+  selected day; ongoing calls and the waiting room remain visible across days. History
+  lives at `/consultations/history`, with completed/cancelled records, date filter and pagination.
+- Invitations expire 24 hours after the later of creation and the scheduled appointment.
+  Rescheduling extends still-valid invitations and sessions; expired invitations must be reissued.
+- Clinical notes persist in `consultation_summaries` during and after the call. Autosave uses
+  revisions to prevent overwriting edits from another window. Ending a call from its room/detail
+  first flushes pending notes. Network failures retain the draft and block completion until saved.
+- Staff can enable/revoke document requests before or during the appointment. Registered,
+  instructed patients upload PDF/JPEG/PNG from the waiting room or call, max 3 MiB each and
+  10 files per consultation. The server validates signatures, session and active request again
+  after Storage upload; a revoked request never commits document metadata.
+- Private `consultation-documents` and `consultation-exports` buckets have no browser policies.
+  Downloads require authenticated staff in the owning practice. ZIP export includes UTF-8 text
+  and all attachments, delivered from private Storage with a 60-second signed download URL
+  to avoid Netlify's response-size limit. One current export per consultation is retained;
+  future exports replace it. Source documents and clinical notes remain authoritative.
+- Text copying/export prepares manual import into clinical documentation; no AIS integration
+  or automatic clinical summary generation is configured.
+- Legacy active records lacking a provider meeting ID can be completed manually. Actual
+  provider meetings must be deleted successfully before completing the record.
+- `APP_ORIGIN` is a public, build-time value for CSRF verification. Netlify builds infer it
+  from DEPLOY_PRIME_URL/URL; set it explicitly for a custom domain. No forwarded host is trusted.
+- Apply the `clinical_workspace` migration after the two restoration migrations. Existing
+  consultations are retained; old records are not automatically closed or assigned new dates.
+- `npm run test:clinical` exercises record revisions, persistence after ending, upload grants,
+  cross-practice isolation, file limits, scheduling and closing legacy calls in disposable PGlite.
+  UI autosave tests also cover in-flight edits, failed saves, conflicts and flushing before close.
