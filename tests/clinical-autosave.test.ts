@@ -65,6 +65,21 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 describe("critical notes during consultation", () => {
+  it("persists explicit identity confirmation with existing notes and can remove it", async () => {
+    await mount();
+    expect(renderer.root.findByType("input").props.checked).toBe(false);
+    await act(async () => {
+      renderer.root.findByType("input").props.onChange({ target: { checked: true } });
+      await vi.advanceTimersByTimeAsync(800);
+    });
+    expect(remote.summary).toBe("Saved before call\nTotožnost pacienta byla ověřena.");
+    expect(renderer.root.findByType("input").props.checked).toBe(true);
+    await act(async () => {
+      renderer.root.findByType("input").props.onChange({ target: { checked: false } });
+      await ref.current!.flush();
+    });
+    expect(remote.summary).toBe("Saved before call");
+  });
   it("loads saved notes and debounces typing into one persisted update", async () => {
     await mount();
     expect(renderer.root.findByType("textarea").props.value).toBe(

@@ -9,7 +9,7 @@ import {
 } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
-import { recordText } from "@/lib/record-text";
+import { recordText, identityVerified, withIdentityConfirmation } from "@/lib/record-text";
 export type RecordHandle = { flush: () => Promise<boolean> };
 export const ClinicalRecord = forwardRef<RecordHandle, { id: string }>(
   function ClinicalRecord({ id }, ref) {
@@ -76,6 +76,13 @@ export const ClinicalRecord = forwardRef<RecordHandle, { id: string }>(
       return ok;
     }, [id]);
     useImperativeHandle(ref, () => ({ flush }), [flush]);
+    function updateDraft(value: string) {
+      draft.current = value;
+      setText(value);
+      setStatus("Čeká na uložení");
+      clearTimeout(timer.current);
+      timer.current = setTimeout(() => void flush(), 800);
+    }
     useEffect(() => {
       mounted.current = true;
       let disposed = false;
@@ -245,6 +252,19 @@ export const ClinicalRecord = forwardRef<RecordHandle, { id: string }>(
           )}
           {record && (
             <>
+              <label className="flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={identityVerified(text)}
+                  disabled={!record.can_edit || busy}
+                  onChange={(e) => updateDraft(withIdentityConfirmation(draft.current, e.target.checked))}
+                />
+                <span>Totožnost pacienta byla ověřena</span>
+              </label>
+              <p className="text-sm text-neutral-500">
+                Potvrďte po ověření totožnosti. Údaj se automaticky uloží a zahrne do výsledného zápisu.
+              </p>
               <label className="block font-medium" htmlFor={`notes-${id}`}>
                 Poznámky a souhrn pro dokumentaci
               </label>
@@ -254,13 +274,7 @@ export const ClinicalRecord = forwardRef<RecordHandle, { id: string }>(
                 maxLength={50000}
                 value={text}
                 disabled={!record.can_edit || busy}
-                onChange={(e) => {
-                  draft.current = e.target.value;
-                  setText(e.target.value);
-                  setStatus("Čeká na uložení");
-                  clearTimeout(timer.current);
-                  timer.current = setTimeout(() => void flush(), 800);
-                }}
+                onChange={(e) => updateDraft(e.target.value)}
                 className="w-full border rounded-lg p-3"
                 placeholder="Anamnéza, nález, závěr, doporučení…"
               />
