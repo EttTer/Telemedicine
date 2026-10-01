@@ -1,178 +1,127 @@
-import { RefreshDashboard } from '@/components/RefreshDashboard'
-import { createClient } from '@/lib/supabase/server'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { Badge } from '@/components/ui/Badge'
-import { Button } from '@/components/ui/Button'
-import Link from 'next/link'
-import { Video, Clock, Users, FileText } from 'lucide-react'
-
-const waitingUpdatedAt = (value: any) => (Array.isArray(value) ? value[0] : value)?.updated_at
-
-export const revalidate = 0 // Disable cache for dashboard
-
-export default async function DashboardPage() {
-  const supabase = createClient()
-  
-  // Get active consultations for this practice
-  const { data: consultations, error } = await supabase
-    .from('consultations')
-    .select(`
-      id,
-      patient_first_name,
-      patient_last_name,
-      scheduled_for,
-      status,
-      consultation_type,
-      waiting_room_sessions(status, joined_at, updated_at),
-      identity_verifications(status, method)
-    `)
-    .in('status', ['scheduled', 'waiting', 'in_progress'])
-    .order('scheduled_for', { ascending: true })
-
-  const waitingPatients = consultations?.filter(c => c.status === 'waiting') || []
-  const upcomingConsultations = consultations?.filter(c => c.status === 'scheduled') || []
-
-  const ongoing = consultations?.filter(c => c.status === 'in_progress') || []
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
+import { RefreshDashboard } from "@/components/RefreshDashboard";
+import { DaySelector } from "@/components/DaySelector";
+import { CloseConsultation } from "@/components/CloseConsultation";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
+import { dayRange, formatPrague, pragueLocal, validDay } from "@/lib/schedule";
+export const revalidate = 0;
+export default async function Dashboard({
+  searchParams,
+}: {
+  searchParams: { day?: string };
+}) {
+  const day =
+    searchParams.day && validDay(searchParams.day)
+      ? searchParams.day
+      : pragueLocal().slice(0, 10);
+  const [from, to] = dayRange(day),
+    db = createClient();
+  const [planned, live] = await Promise.all([
+    db
+      .from("consultations")
+      .select(
+        "id,patient_first_name,patient_last_name,scheduled_for,consultation_type,status",
+      )
+      .eq("status", "scheduled")
+      .gte("scheduled_for", from)
+      .lt("scheduled_for", to)
+      .order("scheduled_for"),
+    db
+      .from("consultations")
+      .select(
+        "id,patient_first_name,patient_last_name,scheduled_for,consultation_type,status,created_at,waiting_room_sessions(updated_at)",
+      )
+      .in("status", ["waiting", "in_progress"])
+      .order("created_at", { ascending: false }),
+  ]);
+  const waiting = live.data?.filter((c) => c.status === "waiting") || [],
+    active = live.data?.filter((c) => c.status === "in_progress") || [];
+  const name = (c: any) =>
+    [c.patient_first_name, c.patient_last_name].filter(Boolean).join(" ") ||
+    "Pacient dosud nevyplnil jméno";
+  function row(c: any) {
+    const w = Array.isArray(c.waiting_room_sessions)
+      ? c.waiting_room_sessions[0]
+      : c.waiting_room_sessions;
+    return (
+      <div
+        key={c.id}
+        className="flex flex-wrap justify-between items-center gap-3 p-3 border-b last:border-0"
+      >
+        <div>
+          <p className="font-semibold">{name(c)}</p>
+          <p className="text-sm text-neutral-500">
+            {formatPrague(c.scheduled_for)} · {c.consultation_type}
+          </p>
+          {c.status === "waiting" && (
+            <p className="text-sm">
+              {Date.now() - new Date(w?.updated_at || 0).getTime() < 60000
+                ? "Pacient je připojený"
+                : "Pacient je bez spojení"}
+            </p>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-3 items-center">
+          <Link className="underline" href={`/consultations/${c.id}`}>
+            Detail
+          </Link>
+          {c.status !== "scheduled" && (
+            <Link className="underline" href={`/consultations/${c.id}/room`}>
+              {c.status === "waiting" ? "Přijmout" : "Vrátit se do hovoru"}
+            </Link>
+          )}
+          <CloseConsultation id={c.id} status={c.status} />
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="space-y-6">
       <RefreshDashboard />
-      {error && <p role="alert" className="text-danger-700">Konzultace se nepodařilo načíst. Obnovte stránku nebo se znovu přihlaste.</p>}
-      {ongoing.length > 0 && <Card><CardHeader><CardTitle>Probíhající hovory</CardTitle></CardHeader><CardContent className="space-y-3">{ongoing.map(c => <div key={c.id} className="flex justify-between"><p>{c.patient_first_name} {c.patient_last_name}</p><Link href={`/consultations/${c.id}/room`} className="underline">Vrátit se do hovoru</Link></div>)}</CardContent></Card>}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight text-neutral-900">Přehled konzultací</h1>
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <h1 className="text-2xl font-bold">Přehled konzultací</h1>
+      <DaySelector day={day} />
+      <p className="text-sm text-neutral-500">
+        Časy jsou v českém časovém pásmu. Plán zobrazuje pouze vybraný den.
+        Probíhající hovory a čekárna zůstávají viditelné i z jiných dnů.
+      </p>
+      {(planned.error || live.error) && (
+        <p role="alert" className="text-danger-700">
+          Konzultace se nepodařilo načíst.
+        </p>
+      )}
+      {active.length > 0 && (
         <Card>
-          <CardContent className="p-6 flex flex-col justify-center">
-            <div className="flex items-center justify-between space-y-0 pb-2">
-              <p className="text-sm font-medium text-neutral-500">Čekající pacienti</p>
-              <Users className="h-4 w-4 text-warning-500" />
-            </div>
-            <div className="text-3xl font-bold">{waitingPatients.length}</div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-6 flex flex-col justify-center">
-            <div className="flex items-center justify-between space-y-0 pb-2">
-              <p className="text-sm font-medium text-neutral-500">Naplánované konzultace</p>
-              <CalendarIcon className="h-4 w-4 text-primary-500" />
-            </div>
-            <div className="text-3xl font-bold">{upcomingConsultations.length}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Waiting Room List */}
-        <Card className="col-span-1 border-t-4 border-t-warning-400">
           <CardHeader>
-            <CardTitle className="flex items-center">
-              <span className="relative flex h-3 w-3 mr-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-warning-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-warning-500"></span>
-              </span>
-              Virtuální čekárna
+            <CardTitle>Probíhající hovory ({active.length})</CardTitle>
+          </CardHeader>
+          <CardContent>{active.map(row)}</CardContent>
+        </Card>
+      )}
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Čekárna ({waiting.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {waiting.length ? waiting.map(row) : <p>Nikdo nečeká.</p>}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              Plánované konzultace ({planned.data?.length || 0})
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {waitingPatients.length === 0 ? (
-              <div className="text-center py-8 text-neutral-500">
-                Nikdo nečeká v čekárně.
-              </div>
+            {planned.data?.length ? (
+              planned.data.map(row)
             ) : (
-              <div className="space-y-4">
-                {waitingPatients.map((consultation) => (
-                  <div key={consultation.id} className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg border border-neutral-100">
-                    <div>
-                      <p className="font-medium text-neutral-900">
-                        {consultation.patient_first_name} {consultation.patient_last_name}
-                      </p>
-                      <p className="text-sm text-neutral-500">{consultation.consultation_type}</p>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <Badge variant="warning">{Date.now()-new Date(waitingUpdatedAt(consultation.waiting_room_sessions) || 0).getTime()<60000 ? 'Čeká' : 'Bez spojení'}</Badge>
-                      <Link href={`/consultations/${consultation.id}`}>
-                        <Button size="sm" variant="secondary">Detail</Button>
-                      </Link>
-                      <Link href={`/consultations/${consultation.id}/room`}>
-                        <Button size="sm" variant="primary">
-                          <Video className="w-4 h-4 mr-2" />
-                          Přijmout
-                        </Button>
-                      </Link>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Upcoming List */}
-        <Card className="col-span-1">
-          <CardHeader>
-            <CardTitle>Plánované konzultace</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {upcomingConsultations.length === 0 ? (
-              <div className="text-center py-8 text-neutral-500">
-                Žádné nadcházející konzultace.
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {upcomingConsultations.map((consultation) => {
-                  const scheduledFor = new Date(consultation.scheduled_for)
-                  return (
-                    <div key={consultation.id} className="flex items-center justify-between p-4 border-b border-neutral-100 last:border-0">
-                      <div className="flex items-center">
-                        <div className="bg-primary-50 text-primary-700 rounded-md p-2 mr-4 text-center min-w-[60px]">
-                          <div className="text-xs font-semibold">{scheduledFor.toLocaleDateString('cs-CZ', { day: 'numeric', month: 'short' })}</div>
-                          <div className="font-bold">{scheduledFor.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })}</div>
-                        </div>
-                        <div>
-                          <p className="font-medium text-neutral-900">
-                            {consultation.patient_first_name || 'Nový'} {consultation.patient_last_name || 'pacient'}
-                          </p>
-                          <p className="text-sm text-neutral-500 flex items-center mt-1">
-                            {consultation.consultation_type}
-                          </p>
-                        </div>
-                      </div>
-                      <Link href={`/consultations/${consultation.id}`}>
-                        <Button size="sm" variant="ghost">Otevřít</Button>
-                      </Link>
-                    </div>
-                  )
-                })}
-              </div>
+              <p>Na tento den nejsou naplánované konzultace.</p>
             )}
           </CardContent>
         </Card>
       </div>
     </div>
-  )
-}
-
-function CalendarIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
-      <line x1="16" x2="16" y1="2" y2="6" />
-      <line x1="8" x2="8" y1="2" y2="6" />
-      <line x1="3" x2="21" y1="10" y2="10" />
-    </svg>
-  )
+  );
 }

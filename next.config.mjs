@@ -1,21 +1,30 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  env: {
+    APP_ORIGIN: new URL(
+      process.env.APP_ORIGIN ||
+        process.env.DEPLOY_PRIME_URL ||
+        process.env.URL ||
+        "https://easytelemedicine.netlify.app",
+    ).origin,
+  },
   // Disable server-side indexing by search engines for all pages
   async headers() {
     return [
       {
-        source: '/(.*)',
+        source: "/(.*)",
         headers: [
-          { key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive' },
-          { key: 'X-Frame-Options', value: 'DENY' },
-          { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'Referrer-Policy', value: 'no-referrer' },
+          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "no-referrer" },
           {
-            key: 'Permissions-Policy',
-            value: 'camera=(self "https://*.whereby.com"), microphone=(self "https://*.whereby.com"), geolocation=()',
+            key: "Permissions-Policy",
+            value:
+              'camera=(self "https://*.whereby.com"), microphone=(self "https://*.whereby.com"), geolocation=()',
           },
           {
-            key: 'Content-Security-Policy',
+            key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
               "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://*.whereby.com",
@@ -25,14 +34,14 @@ const nextConfig = {
               "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.whereby.com wss://*.whereby.com",
               "frame-src https://*.whereby.com",
               "media-src 'self' blob:",
-            ].join('; '),
+            ].join("; "),
           },
         ],
       },
-    ]
+    ];
   },
   // Ensure no robots.txt auto-generation that might expose paths
   experimental: {},
-}
+};
 
-export default nextConfig
+export default nextConfig;
