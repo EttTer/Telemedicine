@@ -11,6 +11,7 @@ import { formatPrague } from "@/lib/schedule";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { recordText, identityVerified } from "@/lib/record-text";
+const AUTOSAVE_PAUSE_MS = 5000;
 export type RecordHandle = { flush: () => Promise<boolean> };
 export const ClinicalRecord = forwardRef<RecordHandle, { id: string }>(
   function ClinicalRecord({ id }, ref) {
@@ -22,18 +23,25 @@ export const ClinicalRecord = forwardRef<RecordHandle, { id: string }>(
       [method, setMethod] = useState(""), [reason,setReason]=useState(""), [historical,setHistorical]=useState<any>(null);
     const draft = useRef(""),
       saved = useRef(""),
+      lastEdit = useRef(0),
       revision = useRef(0),
       initialized = useRef(false),
       mounted = useRef(true),
       conflict = useRef(false),
       saving = useRef<Promise<boolean> | null>(null),
       timer = useRef<ReturnType<typeof setTimeout>>();
-    const flush = useCallback(async (): Promise<boolean> => {
-      clearTimeout(timer.current);
+    const flush = useCallback(async (drain = true): Promise<boolean> => {
+      if (drain) clearTimeout(timer.current);
       if (!initialized.current || conflict.current) return false;
+      const remainingPause = AUTOSAVE_PAUSE_MS - (Date.now() - lastEdit.current);
+      if (!drain && remainingPause > 0) {
+        clearTimeout(timer.current);
+        timer.current = setTimeout(() => void flush(false), remainingPause);
+        return true;
+      }
       if (saving.current) {
         const ok = await saving.current;
-        return ok ? flush() : false;
+        return ok ? flush(drain) : false;
       }
       if (draft.current === saved.current) return true;
       const value = draft.current,
@@ -74,16 +82,22 @@ export const ClinicalRecord = forwardRef<RecordHandle, { id: string }>(
       saving.current = work;
       const ok = await work;
       saving.current = null;
-      if (ok && draft.current !== saved.current) return flush();
+      if (ok && draft.current !== saved.current) {
+        if (drain) return flush();
+        clearTimeout(timer.current);
+        timer.current = setTimeout(() => void flush(false),
+          Math.max(0, AUTOSAVE_PAUSE_MS - (Date.now() - lastEdit.current)));
+      }
       return ok;
     }, [id]);
     useImperativeHandle(ref, () => ({ flush }), [flush]);
     function updateDraft(value: string) {
       draft.current = value;
+      lastEdit.current = Date.now();
       setText(value);
       setStatus("Čeká na uložení");
       clearTimeout(timer.current);
-      timer.current = setTimeout(() => void flush(), 800);
+      timer.current = setTimeout(() => void flush(false), AUTOSAVE_PAUSE_MS);
     }
     useEffect(() => {
       mounted.current = true;
@@ -284,6 +298,7 @@ export const ClinicalRecord = forwardRef<RecordHandle, { id: string }>(
               <p aria-live="polite" className="text-sm">
                 {status}
               </p>
+              {record.can_edit && <p className="text-sm text-neutral-500">Automatické uložení proběhne 5 sekund po přerušení psaní. Uložit můžete i tlačítkem níže.</p>}
               {record.can_edit && (
                 <Button
                   variant="secondary"

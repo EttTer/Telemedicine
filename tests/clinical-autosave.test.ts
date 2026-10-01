@@ -92,12 +92,61 @@ describe("critical notes during consultation", () => {
     await type("Clinical note");
     expect(saves()).toHaveLength(0);
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(800);
+      await vi.advanceTimersByTimeAsync(5000);
     });
     expect(saves()).toEqual([
       { action: "save", summary: "Clinical note", revision: 1 },
     ]);
     expect(JSON.stringify(renderer.toJSON())).toContain("Uloženo");
+  });
+  it("does not create versions between slow keystrokes or before a full typing pause", async () => {
+    await mount();
+    for (const value of ["A", "An", "Ana", "Anam", "Anamn", "Anamnéza"]) {
+      await type(value);
+      await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+      expect(saves()).toHaveLength(0);
+    }
+    await act(async () => { await vi.advanceTimersByTimeAsync(3999); });
+    expect(saves()).toHaveLength(0);
+    await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+    expect(saves()).toEqual([{ action: "save", summary: "Anamnéza", revision: 1 }]);
+  });
+  it.each([0, 6000])("respects the typing pause when an automatic save takes %i ms longer", async (networkDelay) => {
+    await mount();
+    await type("First");
+    let resolve!: (r: Response) => void;
+    fetchMock.mockImplementation((_url, opts) => {
+      if (opts?.method === "POST") return new Promise<Response>(r => { resolve = r; });
+      return Promise.resolve(response(remote));
+    });
+    // Start the auto-save, but keep the network request in flight.
+    await act(async () => { vi.advanceTimersByTime(5000); });
+    expect(saves()).toHaveLength(1);
+    await type("First and second");
+    await act(async () => { await vi.advanceTimersByTimeAsync(networkDelay); });
+    fetchMock.mockImplementation(async (_url, opts) => {
+      if (opts?.method === "POST") {
+        const p = JSON.parse(opts.body);
+        remote = { ...remote, summary: p.summary, revision: remote.revision + 1 };
+        return response({ revision: remote.revision });
+      }
+      return response(remote);
+    });
+    await act(async () => {
+      remote = { ...remote, summary: "First", revision: 2 };
+      resolve(response({ revision: 2 }));
+    });
+    if (networkDelay < 5000) expect(saves()).toHaveLength(1);
+    const remaining = Math.max(0, 5000 - networkDelay);
+    if (remaining) {
+      await act(async () => { await vi.advanceTimersByTimeAsync(remaining - 1); });
+      expect(saves()).toHaveLength(1);
+    }
+    await act(async () => { await vi.advanceTimersByTimeAsync(remaining ? 1 : 0); });
+    expect(saves()).toEqual([
+      { action: "save", summary: "First", revision: 1 },
+      { action: "save", summary: "First and second", revision: 2 },
+    ]);
   });
   it("flushes the last keystrokes before ending or navigating away", async () => {
     await mount();
@@ -189,6 +238,7 @@ describe("critical notes during consultation", () => {
     remote = { ...remote, summary: "Another remote update", revision: 3 };
     fetchMock.mockResolvedValueOnce(response({ error: "Conflict" }, 409));
     await act(async () => {
+      expect(await ref.current!.flush()).toBe(false);
       await vi.advanceTimersByTimeAsync(5000);
     });
     expect(renderer.root.findByType("textarea").props.value).toBe(

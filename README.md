@@ -120,6 +120,9 @@ SMS identity verification and automated invitation delivery are not configured.
 - Identity confirmation records method, actual actor and server time separately from free-text
   notes. Older text markers are explicitly labeled as legacy; migration does not fabricate
   who verified identity or when.
+- Notes auto-save after five seconds without typing, rather than between individual
+  keystrokes. Explicit saves, navigation and ending a call flush pending edits immediately.
+  Background saves do not drain subsequent keystrokes while a network request is in flight.
 - Every saved note revision is preserved from this migration onward. Existing notes are
   retained as the current baseline only; earlier history cannot be reconstructed.
 - Completed calls with nonempty notes, confirmed identity and basic provider identification
