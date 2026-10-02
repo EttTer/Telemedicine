@@ -6,9 +6,12 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { WherebyRoom } from "@/components/WherebyRoom";
 
+import { ConnectionNotice } from "@/components/ConnectionNotice";
+
 export default function StaffRoom() {
   const params = useParams<{ id: string }>();
   const recordRef = useRef<RecordHandle>(null);
+  const [retry, setRetry] = useState(0);
   const [room, setRoom] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -16,9 +19,11 @@ export default function StaffRoom() {
   const [ended, setEnded] = useState(false);
   useEffect(() => {
     let disposed = false;
+    setError("");
     fetch(`/api/consultations/${params.id}/video`, { cache: "no-store" })
       .then(async (response) => {
         const data = await response.json();
+        if (!response.ok) throw new Error(data.error);
         if (!disposed && response.ok) {
           setRoom(data.hostRoomUrl || "");
           setEnded(data.status === "completed");
@@ -31,7 +36,7 @@ export default function StaffRoom() {
     return () => {
       disposed = true;
     };
-  }, [params.id]);
+  }, [params.id, retry]);
   async function act(action: "start" | "end") {
     if (action === "end" && !(await recordRef.current?.flush())) {
       setError("Nejprve uložte rozepsané poznámky.");
@@ -63,6 +68,7 @@ export default function StaffRoom() {
   }
   return (
     <div className="space-y-5">
+      <ConnectionNotice notes />
       <Link href={`/consultations/${params.id}`} className="underline">
         Zpět na detail konzultace
       </Link>
@@ -72,6 +78,7 @@ export default function StaffRoom() {
       {error && (
         <p role="alert" className="text-danger-700">
           {error}
+          <button className="block underline" onClick={() => setRetry(x => x + 1)}>Znovu načíst stav hovoru</button>
         </p>
       )}
       {!ended && !room && !active && (
@@ -96,7 +103,7 @@ export default function StaffRoom() {
         </>
       )}
       <div className="grid gap-5 xl:grid-cols-2">
-        <div className="space-y-4">
+        <div className="space-y-4 min-w-0">
           {room && (
             <>
               <p className="text-sm">

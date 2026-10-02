@@ -46,6 +46,7 @@ try {
     "clinical_workspace.sql",
     "compliance_workflow.sql",
     "password_only_staff_login.sql",
+    "consultation_polish.sql",
   ]) {
     const f = ms.find((x) => x.endsWith(suffix));
     assert.ok(f);
@@ -157,6 +158,18 @@ try {
   eq(ds.documents[0].file_name, "synthetic.pdf");
   eq(JSON.stringify(ds).includes("storage_path"), false);
   eq((await record(1, c, "read")).documents.length, 1);
+  const documentId = ds.documents[0].id;
+  eq((await record(1,c,"label_document",{document_id:documentId,label:"  Synthetic lab results  "})).label,"Synthetic lab results");
+  eq((await record(1,c,"read")).documents[0].file_name,"synthetic.pdf");
+  await fail(()=>record(2,c,"label_document",{document_id:documentId,label:"Foreign"}),"not_found");
+  await fail(()=>record(3,c,"label_document",{document_id:documentId,label:"Nurse"}),"forbidden");
+  await fail(()=>record(1,c,"label_document",{document_id:uid(999),label:"Missing"}),"not_found");
+  await fail(()=>record(1,c,"label_document",{document_id:documentId,label:"x".repeat(201)}),"invalid_document_label");
+  await fail(()=>record(1,c,"label_document",{document_id:documentId,label:"Two\nlines"}),"invalid_document_label");
+  eq((await record(1,c,"read")).patient_presence.active,true);
+  await db.query("update waiting_room_sessions set updated_at=now()-interval '61 seconds' where consultation_id=$1",[c]);
+  eq((await record(1,c,"read")).patient_presence.active,false);
+  await db.query("update waiting_room_sessions set updated_at=now() where consultation_id=$1",[c]);
   const newer = new Date(Date.now() + 7 * 86400000).toISOString();
   await record(3, c, "reschedule", { scheduled_for: newer });
   eq(
@@ -256,6 +269,8 @@ try {
   await record(1,c,"finalize",{revision:2});
   await record(1,c,"finalize",{revision:2}); // idempotent completion
   let finalized=await record(1,c,"read");
+  await fail(()=>record(1,c,"label_document",{document_id:documentId,label:"Overwrite"}),"record_finalized");
+  eq(finalized.documents[0].label,"Synthetic lab results");
   eq(finalized.can_edit,false);eq(finalized.finalization.revision,2);
   eq(finalized.acknowledgement.recording_preference,"declined");
   await fail(()=>record(1,c,"save",{revision:2,summary:"Overwrite"}),"record_finalized");

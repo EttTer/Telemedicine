@@ -40,6 +40,7 @@ export function rpcError(error: { code?: string; message?: string }) {
       403,
     );
   const messages: Record<string, string> = {
+    invalid_document_label: "Popis dokumentu může mít nejvýše 200 znaků a musí být na jednom řádku.",
     record_finalized: "Podklad byl dokončen. Pro další změnu nejprve otevřete opravu a uveďte její důvod.",
     record_incomplete: "Nejprve ukončete konzultaci a doplňte zápis.",
     identity_required: "Nejprve zaznamenejte skutečně provedené ověření totožnosti.",

@@ -66,6 +66,39 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 describe("critical notes during consultation", () => {
+  it("does not replace a newly saved note with a stale polling response", async () => {
+    await mount();
+    const stale = {...remote};
+    let finish: (value: Response) => void = () => {};
+    fetchMock.mockImplementationOnce(() => new Promise<Response>(resolve => { finish = resolve; }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
+    await type("Latest clinical finding");
+    await act(async () => { await ref.current!.flush(); });
+    await act(async () => { finish(response(stale)); });
+    expect(renderer.root.findByType("textarea").props.value).toBe("Latest clinical finding");
+    expect(remote.revision).toBe(2);
+  });
+  it("appends an outline without deleting notes or duplicating headings", async () => {
+    await mount(); await type("Existing clinical findings.");
+    const button = renderer.root.findAllByType("button").find(b => JSON.stringify(b.props.children).includes("Vložit osnovu zápisu"))!;
+    await act(async () => button.props.onClick());
+    const value = renderer.root.findByType("textarea").props.value;
+    expect(value).toContain("Existing clinical findings.");
+    expect(value).toContain("ANAMNÉZA");
+    await act(async () => button.props.onClick());
+    expect(renderer.root.findByType("textarea").props.value).toBe(value);
+    expect(saves()).toHaveLength(0);
+    await act(async () => { await ref.current!.flush(); });
+    expect(remote.summary).toBe(value);
+  });
+  it("retries unsaved notes when the network comes online", async () => {
+    await mount(); await type("Retained after interruption");
+    fetchMock.mockRejectedValueOnce(new Error("Offline"));
+    await act(async () => { await ref.current!.flush(); });
+    expect(renderer.root.findByType("textarea").props.value).toBe("Retained after interruption");
+    await act(async () => { await vi.advanceTimersByTimeAsync(5000); window.dispatchEvent(new Event("online")); });
+    expect(remote.summary).toBe("Retained after interruption");
+  });
   it("stores structured identity evidence without changing clinical notes", async () => {
     await mount();
     expect(renderer.root.findByProps({type:"checkbox"}).props.checked).toBe(false);

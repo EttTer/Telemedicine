@@ -7,6 +7,13 @@ const record = {
   video: { started_at: "2026-10-01T08:00:00Z", ended_at: "2026-10-01T08:12:34Z" },
 };
 describe("clinical record identity and duration", () => {
+  it("puts clinical content first and retains labeled filenames and administrative evidence", () => {
+    const output = recordText({...record, documents:[{file_name:"lab.pdf",label:"Laboratoř"}], provider:{legal_name:"Test practice"}, patient:{reason_for_visit:"Kontrola"}});
+    expect(output.indexOf("Důvod konzultace: Kontrola")).toBeLessThan(output.indexOf("LÉKAŘSKÝ ZÁZNAM"));
+    expect(output.indexOf(record.summary)).toBeLessThan(output.indexOf("Poskytovatel:"));
+    expect(output).toContain("Laboratoř (lab.pdf)");
+    expect(output).toContain("Poskytovatel: Test practice");
+  });
   it("does not infer verification from the chosen method or a completed call", () => {
     expect(recordText(record)).toContain("Ověření totožnosti: Nepotvrzeno.");
     expect(recordText(record)).toContain("Trvání hovoru: 12 min 34 s");

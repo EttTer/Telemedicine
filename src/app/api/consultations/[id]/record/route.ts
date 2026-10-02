@@ -36,6 +36,7 @@ const input = z.discriminatedUnion("action", [
   z.object({action:z.literal("verify_identity"),verified:z.boolean(),method:z.string().trim().min(5).max(200)}).strict(),
   z.object({action:z.literal("finalize"),revision:z.number().int().min(0)}).strict(),
   z.object({action:z.literal("reopen"),revision:z.number().int().min(0),reason:z.string().trim().min(3).max(1000)}).strict(),
+  z.object({action:z.literal("label_document"),document_id:z.string().uuid(),label:z.string().trim().max(200).refine(v=>!/[\x00-\x1f\x7f]/.test(v))}).strict(),
   z
     .object({
       action: z.literal("reschedule"),

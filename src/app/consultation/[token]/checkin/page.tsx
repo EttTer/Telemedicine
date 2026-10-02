@@ -44,7 +44,7 @@ export default function CheckinPage() {
 
   return (
     <div className="flex-1 max-w-lg w-full mx-auto py-8">
-      <div className="mb-8 flex items-center space-x-2 text-sm text-neutral-400">
+      <div className="mb-8 flex flex-wrap items-center gap-2 text-sm text-neutral-400">
         <span className="font-medium text-primary-600">1. Údaje</span>
         <ArrowRight className="w-3 h-3" />
         <span>2. Poučení</span>
@@ -60,11 +60,11 @@ export default function CheckinPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {error && <p role="alert" className="text-danger-700">{error}</p>}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="first_name">Jméno *</Label>
-                <Input 
-                  id="first_name" 
+                <Input
+                  id="first_name" autoComplete="given-name" maxLength={100}
                   required
                   value={formData.first_name}
                   onChange={e => setFormData(p => ({ ...p, first_name: e.target.value }))}
@@ -72,8 +72,8 @@ export default function CheckinPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="last_name">Příjmení *</Label>
-                <Input 
-                  id="last_name" 
+                <Input
+                  id="last_name" autoComplete="family-name" maxLength={100}
                   required
                   value={formData.last_name}
                   onChange={e => setFormData(p => ({ ...p, last_name: e.target.value }))}
@@ -83,8 +83,8 @@ export default function CheckinPage() {
 
             <div className="space-y-2">
               <Label htmlFor="dob">Datum narození *</Label>
-              <Input 
-                id="dob" 
+              <Input
+                id="dob" autoComplete="bday"
                 type="date"
                 required
                 value={formData.date_of_birth}
@@ -94,8 +94,8 @@ export default function CheckinPage() {
 
             <div className="space-y-2">
               <Label htmlFor="contact">Telefon nebo e-mail *</Label>
-              <Input 
-                id="contact" 
+              <Input
+                id="contact" maxLength={250}
                 required
                 placeholder="Pro případ výpadku spojení"
                 value={formData.contact_info}
@@ -105,8 +105,8 @@ export default function CheckinPage() {
 
             <div className="space-y-2">
               <Label htmlFor="reason">Důvod návštěvy (volitelné)</Label>
-              <textarea 
-                id="reason"
+              <textarea
+                id="reason" maxLength={2000}
                 className="flex min-h-[80px] w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                 value={formData.reason_for_visit}
                 onChange={e => setFormData(p => ({ ...p, reason_for_visit: e.target.value }))}

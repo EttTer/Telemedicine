@@ -21,6 +21,18 @@ export function recordText(record: any) {
   const verified = identity?.status === "verified";
   const identityState = verified ? "Totožnost pacienta byla ověřena." : identity ? "Ověření nebylo potvrzeno." : identityVerified(record.summary || "") ? "Starší textové potvrzení: Totožnost pacienta byla ověřena. Čas a autor nebyly evidovány." : "Nepotvrzeno.";
   return `ZÁZNAM TELEMEDICÍNSKÉ KONZULTACE
+Pacient: ${[c.patient_first_name, c.patient_last_name].filter(Boolean).join(" ") || "Neuveden"}
+Datum narození: ${p?.date_of_birth || "Neuvedeno"}
+Termín: ${formatPrague(c.scheduled_for)}
+Důvod konzultace: ${p?.reason_for_visit || "Neuveden"}
+
+LÉKAŘSKÝ ZÁZNAM
+${withIdentityConfirmation(record.summary || "", false)}
+
+PŘÍLOHY
+${record.documents.map((d: any) => "- " + (d.label ? `${d.label} (${d.file_name})` : d.file_name)).join("\n") || "Žádné"}
+
+ÚDAJE O KONZULTACI A AUTORIZACI
 Poskytovatel: ${provider.legal_name || provider.name || "Neuveden"}
 IČO: ${provider.ico || "Neuvedeno"}
 Adresa poskytovatele: ${provider.address || "Neuvedena"}
@@ -31,9 +43,6 @@ Stav podkladu: ${record.finalization ? "Dokončený podklad" : "Pracovní podkla
 Dokončil/a: ${record.finalization?.by_name || "Dosud nedokončeno"}
 Čas dokončení: ${record.finalization?.finalized_at ? formatPrague(record.finalization.finalized_at) : "Dosud nedokončeno"}
 Důvod opravy: ${record.amendment_reason || "Není uveden"}
-Pacient: ${[c.patient_first_name, c.patient_last_name].filter(Boolean).join(" ") || "Neuveden"}
-Datum narození: ${p?.date_of_birth || "Neuvedeno"}
-Termín: ${formatPrague(c.scheduled_for)}
 Typ: ${c.consultation_type}
 Stav: ${{ completed: "Dokončeno", cancelled: "Zrušeno", in_progress: "Probíhá", waiting: "Čekárna", scheduled: "Plánováno" }[c.status as string] || c.status}
 Začátek hovoru: ${v?.started_at ? formatPrague(v.started_at) : "Nezaznamenán"}
@@ -46,12 +55,5 @@ Ověření zaznamenal/a: ${identity?.verified_by_name || "Nezaznamenáno"}
 Souhlas s konzultací na dálku: ${ack?.care_consent ? "Potvrzen při vstupu" : "V aplikaci není evidován"}
 Poučení: ${ack?.version || "Neevidováno"} · ${ack?.acknowledged_at ? formatPrague(ack.acknowledged_at) : "Čas neevidován"}
 Vyjádření k audio/videozáznamu: ${ack?.recording_preference === "declined" ? "Pacient nesouhlasí s pořizováním záznamu" : ack?.recording_preference === "not_requested" ? "Pacient záznam nepožaduje; konzultace bez něj" : "V aplikaci není evidováno"}
-Důvod konzultace: ${p?.reason_for_visit || "Neuveden"}
-
-LÉKAŘSKÝ ZÁZNAM
-${withIdentityConfirmation(record.summary || "", false)}
-
-PŘÍLOHY
-${record.documents.map((d: any) => "- " + d.file_name).join("\n") || "Žádné"}
 `;
 }

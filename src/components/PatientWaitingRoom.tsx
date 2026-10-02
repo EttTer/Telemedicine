@@ -5,6 +5,8 @@ import { WherebyRoom } from "@/components/WherebyRoom";
 import { PatientDocuments } from "@/components/PatientDocuments";
 import { Button } from "@/components/ui/Button";
 
+import { ConnectionNotice } from "@/components/ConnectionNotice";
+
 type State = {
   status: string;
   acknowledged?: boolean;
@@ -65,6 +67,7 @@ export function PatientWaitingRoom({ token }: { token: string }) {
   const ended = state && ["completed", "cancelled"].includes(state.status);
   return (
     <div className="space-y-6 py-8">
+      <ConnectionNotice />
       <h1 className="text-2xl font-bold">
         {ended
           ? "Konzultace byla ukončena"

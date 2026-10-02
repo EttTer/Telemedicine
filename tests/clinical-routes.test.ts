@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 const m = vi.hoisted(() => ({
+  audit: vi.fn(),
   cookie: "b".repeat(64),
   rpc: vi.fn(),
   context: vi.fn(),
@@ -20,6 +21,7 @@ vi.mock("@/lib/supabase/server", () => ({
     storage: { from: () => ({ upload: m.upload, remove: m.remove }) },
   }),
 }));
+vi.mock("@/lib/access-log", () => ({ accessLog: m.audit }));
 vi.mock("@/lib/staff", () => ({ getStaffContext: m.context }));
 import {
   GET as readRecord,
@@ -59,6 +61,29 @@ beforeEach(() => {
   m.remove.mockResolvedValue({ error: null });
 });
 describe("clinical API authorization and uploads", () => {
+  it("previews scoped files through the authenticated route without public URLs", async () => {
+    m.rpc.mockResolvedValue({data:{documents:[{id:"doc",file_name:"synthetic.pdf",file_type:"application/pdf",storage_path:"private/path"}]},error:null});
+    m.download.mockResolvedValue({data:new Blob(["%PDF-1.7 synthetic"]),error:null});
+    const r = await download(new Request("https://app.example/file?preview=1"),{params:Promise.resolve({id,documentId:"doc"})});
+    expect(r.status).toBe(200);
+    expect(r.headers.get("content-disposition")).toContain("inline;");
+    expect(r.headers.get("cache-control")).toBe("no-store");
+    expect(r.headers.get("content-security-policy")).toContain("sandbox");
+    expect(m.download).toHaveBeenCalledWith("private/path");
+    expect(m.audit.mock.calls[0][1]).toBe("document_preview");
+    m.rpc.mockResolvedValue({data:{documents:[]},error:null});
+    expect((await download(new Request("https://app.example/file?preview=1"),{params:Promise.resolve({id,documentId:"doc"})})).status).toBe(404);
+    expect(m.download).toHaveBeenCalledTimes(1);
+  });
+  it("validates document descriptions before delegating the verified staff ID", async () => {
+    for (const label of ["x".repeat(201),"Two\nlines"]) {
+      expect((await recordPost(req({action:"label_document",document_id:id,label}),{params:Promise.resolve({id})})).status).toBe(400);
+    }
+    expect(m.rpc).not.toHaveBeenCalled();
+    m.rpc.mockResolvedValue({data:{document_id:id,label:"Lab"},error:null});
+    expect((await recordPost(req({action:"label_document",document_id:id,label:" Lab "}),{params:Promise.resolve({id})})).status).toBe(200);
+    expect(m.rpc.mock.calls[0][1]).toMatchObject({p_staff:id,p_action:"label_document",p_data:{document_id:id,label:"Lab"}});
+  });
   it("rejects unauthenticated staff and malformed IDs before RPC", async () => {
     m.context.mockResolvedValue({ staff: null, status: 401 });
     expect(

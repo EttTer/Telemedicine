@@ -11,6 +11,9 @@ import { formatPrague } from "@/lib/schedule";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { recordText, identityVerified } from "@/lib/record-text";
+import { DocumentPanel } from "@/components/DocumentPanel";
+import { ConnectionNotice } from "@/components/ConnectionNotice";
+import { appendNoteOutline } from "@/lib/note-outline";
 const AUTOSAVE_PAUSE_MS = 5000;
 export type RecordHandle = { flush: () => Promise<boolean> };
 export const ClinicalRecord = forwardRef<RecordHandle, { id: string }>(
@@ -111,13 +114,13 @@ export const ClinicalRecord = forwardRef<RecordHandle, { id: string }>(
           const d = await r.json();
           if (!r.ok) throw new Error(d.error);
           if (!disposed) {
-            setRecord(d);
+            if (!initialized.current || d.revision >= revision.current) setRecord(d);
             if (!initialized.current) setMethod(d.identity?.method || d.consultation.identity_verification_method || "");
             if (
               !initialized.current ||
               (draft.current === saved.current &&
                 !saving.current &&
-                d.revision !== revision.current)
+                d.revision > revision.current)
             ) {
               draft.current = d.summary || "";
               saved.current = draft.current;
@@ -161,6 +164,8 @@ export const ClinicalRecord = forwardRef<RecordHandle, { id: string }>(
         e.stopPropagation();
         if (await flush()) window.location.assign(u.href);
       };
+      const resume = () => { if (draft.current !== saved.current && !conflict.current) void flush(false); };
+      window.addEventListener("online", resume);
       window.addEventListener("beforeunload", warn);
       document.addEventListener("click", navigate, true);
       return () => {
@@ -168,6 +173,7 @@ export const ClinicalRecord = forwardRef<RecordHandle, { id: string }>(
         mounted.current = false;
         clearTimeout(poll);
         clearTimeout(timer.current);
+        window.removeEventListener("online", resume);
         window.removeEventListener("beforeunload", warn);
         document.removeEventListener("click", navigate, true);
       };
@@ -265,6 +271,7 @@ export const ClinicalRecord = forwardRef<RecordHandle, { id: string }>(
           <CardTitle>Záznam a přílohy konzultace</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          <ConnectionNotice notes />
           {error && (
             <p role="alert" className="text-danger-700 whitespace-pre-wrap">
               {error}
@@ -272,6 +279,16 @@ export const ClinicalRecord = forwardRef<RecordHandle, { id: string }>(
           )}
           {record && (
             <>
+              <section className="rounded-lg border p-3" aria-label="Stav konzultace">
+                <h3 className="font-semibold">Stav konzultace</h3>
+                <ul className="grid gap-2 text-sm sm:grid-cols-2 mt-2">
+                  <li>Čekárna: {record.patient_presence?.active ? "pacient nedávno odpověděl" : "bez aktuální odezvy pacienta"}</li>
+                  <li>Totožnost: {record.identity?.status === "verified" ? "ověřena" : "nepotvrzena"}</li>
+                  <li>Poznámky: {draft.current !== saved.current ? "čekají na uložení" : status}</li>
+                  <li>Zápis: {record.finalization ? "dokončený podklad" : "pracovní podklad"}</li>
+                </ul>
+                <p className="text-xs text-neutral-500 mt-2">Odezva čekárny neprokazuje spojení kamery ani mikrofonu.</p>
+              </section>
               <label className="block">Metoda skutečně provedeného ověření totožnosti
                 <input type="text" value={method} maxLength={200} disabled={!record.can_edit || busy} onChange={e=>setMethod(e.target.value)} className="block border rounded p-2 w-full" placeholder="Např. předem domluvené údaje a kontrolní otázka" />
               </label>
@@ -285,6 +302,7 @@ export const ClinicalRecord = forwardRef<RecordHandle, { id: string }>(
               <label className="block font-medium" htmlFor={`notes-${id}`}>
                 Poznámky a souhrn pro dokumentaci
               </label>
+              {record.can_edit && <Button variant="secondary" size="sm" disabled={busy || text.length + 60 > 50000} onClick={() => updateDraft(appendNoteOutline(draft.current))}>Vložit osnovu zápisu</Button>}
               <textarea
                 id={`notes-${id}`}
                 rows={10}
@@ -342,29 +360,7 @@ export const ClinicalRecord = forwardRef<RecordHandle, { id: string }>(
               <p className="text-sm text-neutral-500">Dokončení zachová neměnnou verzi. Další oprava bude mít vlastní verzi a důvod. Podklad je potřeba přenést a autorizovat ve vašem systému zdravotnické dokumentace.</p>
               {!!record.versions?.length && <details><summary>Historie zápisu (posledních 20 verzí)</summary><ul className="space-y-2">{record.versions.map((v:any)=><li key={v.revision}><button type="button" className="underline" disabled={busy} onClick={async()=>{try{const r=await fetch(`/api/consultations/${id}/record?revision=${v.revision}`,{cache:"no-store"});const d=await r.json();if(!r.ok)throw new Error(d.error);setHistorical(d)}catch(e){setError(e instanceof Error?e.message:"Verzi nelze načíst.")}}}>Verze {v.revision} · {formatPrague(v.saved_at)} · {v.author || "Autor neuveden"}</button>{v.source==="baseline"&&<span> · výchozí dochovaný stav</span>}{v.amendment_reason&&<p>Oprava: {v.amendment_reason}</p>}</li>)}</ul></details>}
               {historical&&<section className="border rounded p-3"><h3 className="font-semibold">Dochovaná verze {historical.revision}</h3><pre className="whitespace-pre-wrap font-sans">{historical.summary}</pre><Button variant="ghost" onClick={()=>setHistorical(null)}>Zavřít náhled verze</Button></section>}
-              <h3 className="font-semibold">
-                Přílohy pacienta ({record.documents.length}/10)
-              </h3>
-              <ul className="space-y-2">
-                {record.documents.map((d: any) => (
-                  <li key={d.id}>
-                    <a
-                      href={`/api/consultations/${id}/documents/${d.id}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="underline text-primary-700"
-                    >
-                      {d.file_name}
-                    </a>{" "}
-                    <span className="text-sm text-neutral-500">
-                      ({Math.ceil(d.file_size / 1024)} kB)
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              {!record.documents.length && (
-                <p className="text-sm">Zatím nejsou nahrané žádné přílohy.</p>
-              )}
+              <DocumentPanel id={id} documents={record.documents} editable={record.can_edit && !busy} onLabel={(documentId, label) => setRecord((previous: any) => ({...previous, documents: previous.documents.map((document: any) => document.id === documentId ? {...document, label} : document)}))} />
               {["scheduled", "waiting", "in_progress"].includes(
                 record.consultation.status,
               ) && (

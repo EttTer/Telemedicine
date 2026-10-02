@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/Button";
 export function PatientDocuments({ token }: { token: string }) {
   const [data, setData] = useState<any>(null),
     [error, setError] = useState(""),
+    [loadError, setLoadError] = useState(""),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
   const input = useRef<HTMLInputElement>(null);
@@ -17,10 +18,10 @@ export function PatientDocuments({ token }: { token: string }) {
         });
         const d = await r.json();
         if (!r.ok) throw new Error(d.error);
-        if (!stopped) setData(d);
+        if (!stopped) { setData(d); setLoadError(""); }
       } catch (e) {
         if (!stopped)
-          setError(e instanceof Error ? e.message : "Přílohy nelze načíst.");
+          setLoadError(e instanceof Error ? e.message : "Přílohy nelze načíst.");
       }
       if (!stopped) timer = setTimeout(poll, 5000);
     }
@@ -68,6 +69,7 @@ export function PatientDocuments({ token }: { token: string }) {
   return (
     <section className="bg-white border rounded-lg p-4 space-y-3">
       <h2 className="font-semibold">Dokumenty pro ordinaci</h2>
+      {loadError && <p role="alert" className="text-danger-700">{loadError} Obnovení spojení zkoušíme automaticky.</p>}
       {error && (
         <p role="alert" className="text-danger-700">
           {error}
@@ -84,6 +86,7 @@ export function PatientDocuments({ token }: { token: string }) {
             ref={input}
             aria-label="Příloha pro ordinaci"
             type="file"
+            className="w-full min-w-0"
             accept="application/pdf,image/jpeg,image/png"
             required
             disabled={busy || data.documents.length >= 10}
@@ -106,7 +109,7 @@ export function PatientDocuments({ token }: { token: string }) {
           <h3 className="font-medium">Nahrané dokumenty</h3>
           <ul>
             {data.documents.map((d: any) => (
-              <li key={d.id}>
+              <li key={d.id} className="break-all">
                 {d.file_name} · {Math.ceil(d.file_size / 1024)} kB
               </li>
             ))}
